@@ -1421,12 +1421,11 @@ function imgui.OnDrawFrame()
             uws.v = false 
             sampAddChatMessage(sname..'Началось обновление скрипта',-1)
             link = info.updateurl
-            os.remove(pathupd)
             path = getWorkingDirectory()..'\\LVaHelper.lua'
             downloadUrlToFile(link, path, download_handler)
         end
         imgui.SameLine()
-        if imgui.Button(u8'Нет',imgui.ImVec2(175,25)) then print('ne обновлено') uws.v = false end
+        if imgui.Button(u8'Нет',imgui.ImVec2(175,25)) then print('Обновление отклонено') uws.v = false end
  
         imgui.End()
     end
@@ -2209,8 +2208,9 @@ function checkDirectory(arg)
                 imgui.Process = uws.v
             end
         end
-        f.close()
+        f:close()
     end
+    os.remove(pathupd)
 
     if restart then
         thisScript():reload()
