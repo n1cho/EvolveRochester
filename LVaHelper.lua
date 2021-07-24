@@ -2209,10 +2209,12 @@ function auto_update()
     pathupd = getWorkingDirectory()..'\\update.ini'
     linkupd = 'https://raw.githubusercontent.com/n1cho/EvolveRochester/main/update.ini'
     downloadUrlToFile(linkupd, pathupd, download_handler)
-    updateIni = inicfg.load(nil,pathupd)
-    if updateIni.lvahelper.latest ~= thisScript().version then
-        uws.v = true
-        if not imgui.Process then imgui.Process = uws.v end
+    if doesFileExist(pathupd) then
+        updateIni = inicfg.load(nil,pathupd)
+        if updateIni.lvahelper.latest ~= thisScript().version then
+            uws.v = true
+            if not imgui.Process then imgui.Process = uws.v end
+        end
     end
 end
 
