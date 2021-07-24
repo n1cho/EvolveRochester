@@ -3,7 +3,7 @@
 -- version 0.8
 
 script_name("LVa Helper")
-script_version('0.8')
+script_version('0.7')
 
 local sname = '{51964D}[LVa Helper]:{ffffff} '
 -------- trash -------
@@ -1413,14 +1413,14 @@ function imgui.OnDrawFrame()
         imgui.SetNextWindowPos(imgui.ImVec2(sw/2,sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
         imgui.Begin(u8'Обновление',uws)
 
-        imgui.CenterText(u8(string.format('Доступно обновление до версии %s.',info.latest)))
-        imgui.CenterText(u8('Изменения: '..info.changes))
+        imgui.CenterText(u8(string.format('Доступно обновление до версии %s.',updateIni.lvahelper.latest)))
+        imgui.CenterText(u8('Изменения: '..updateIni.lvahelper.changes))
         imgui.CenterText(u8'Обновить сейчас?')
 
         if imgui.Button(u8'Да',imgui.ImVec2(175,25)) then 
             uws.v = false 
             sampAddChatMessage(sname..'Началось обновление скрипта',-1)
-            link = info.updateurl
+            link = updateIni.lvahelper.updateurl
             os.remove(pathupd)
             path = getWorkingDirectory()..'\\LVaHelper.lua'
             downloadUrlToFile(link, path, download_handler)
@@ -1486,6 +1486,8 @@ function main()
         end
 
     end
+
+    auto_update()
 
     updateTime()
 
@@ -2196,23 +2198,6 @@ function checkDirectory(arg)
         restart = true
     end
 
-
-    pathupd = getWorkingDirectory()..'\\update.json'
-    linkupd = 'https://raw.githubusercontent.com/n1cho/EvolveRochester/main/update.json'
-    downloadUrlToFile(linkupd, pathupd, download_handler)
-    f = io.open(pathupd,'r')
-    if f then
-        info = decodeJson(f:read('*a'))
-        if info.latest ~= thisScript().version then
-            uws.v = true 
-            if not imgui.Process then
-                imgui.Process = uws.v
-            end
-        end
-        f:close()
-        os.remove(pathupd)
-    end
-
     if restart then
         thisScript():reload()
         restart = false
@@ -2220,7 +2205,20 @@ function checkDirectory(arg)
 
 end
 
+function auto_update()
+    pathupd = getWorkingDirectory()..'\\update.ini'
+    linkupd = 'https://raw.githubusercontent.com/n1cho/EvolveRochester/main/update.ini'
+    downloadUrlToFile(linkupd, pathupd, download_handler)
+    updateIni = inicfg.load(nil,pathupd)
+    if updateIni.lvahelper.latest ~= thisScript().version then
+        uws.v = true
+        if not imgui.Process then imgui.Process = uws.v end
+    end
+end
+
 -------------------------------------
+
+
 function getAmmoInClip()
     local pointer = getCharPointer(playerPed)
     local weapon = getCurrentCharWeapon(playerPed)
