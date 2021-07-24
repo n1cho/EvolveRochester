@@ -3,6 +3,8 @@
 -- version 0.8
 
 script_name("LVa Helper")
+script_version('0.8')
+
 local sname = '{51964D}[LVa Helper]:{ffffff} '
 -------- trash -------
 local CarsName = {"Landstalker", "Bravura", "Buffalo", "Linerunner", "Perrenial", "Sentinel", "Dumper", "Firetruck", "Trashmaster", "Stretch", "Manana", "Infernus",
@@ -31,18 +33,12 @@ for _, str in ipairs(DopBind) do
     DopText = DopText .. str .. "\n"
 end
 
-local DopBindFast = {'{MyId} - ваш ID','{MyName} - ваш ник с "_"','{MyNameR} - ваш ник без "_"','{TarName} - ник цели(Target)','{TarNameR} - ник цели(Target) без "_"','{TarID} - ID цели(Target)',
-    '{KV} - пишет ваш квадрат','{MyTeg} - ваш тег в рацию','{MyRang} - ваш ранг','{NowDate} - возвращает время в формате H:M:S'}
-local DopTextFast = ""
-
-for _, str in ipairs(DopBindFast) do
-    DopTextFast = DopTextFast .. str .. "\n"
-end
 
 dayName = {"Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"}
 dayNameS = {'Mon','Tue','Wed','Thu','Fri','Sat','Sun'}
 ----------------------
 -- import ------
+require 'lib.moonloader'
 local sampev = require 'lib.samp.events'
 local imgui = require "imgui"
 local inicfg = require "inicfg"
@@ -84,6 +80,8 @@ local timesDoklad = 0
 local checkPass = 0
 local sessionDoklad = 0
 local sessionPass = 0
+local testLocal = 0
+local MaskOn=false
 ----- hot key ------
 local rkeys = require 'rkeys'
 imgui.HotKey = require('imgui_addons').HotKey
@@ -108,7 +106,9 @@ local newIni = {
         autoTeg = false,
         autoClist = false,
         autoBP = false,
-        chatT = false
+        chatT = false,
+        style=0,
+        metka=false
     },
     abp = {
         deagle = false,
@@ -271,8 +271,8 @@ local ows = imgui.ImBool(false) -- online window state
 local fws = imgui.ImBool(false) -- fast-menu redact window state
 local pws = imgui.ImBool(false) -- post window state
 local aws = imgui.ImBool(false) -- about script window state
+local uws = imgui.ImBool(false) -- update window state
 
-local windows = {'m','s','b','d','o','f','p'}
 
 local FastMenuEdit1 = imgui.ImInt(0)
 
@@ -285,7 +285,7 @@ local sw,sh = getScreenResolution()
 function imgui.OnDrawFrame()
     infbr = imgui.ImBool(mainIni.config.infbr) 
 
-    if not mws.v and not sws.v and not infbr.v and not bws.v and not fastmenu and not dws.v and not ows.v and not fws.v and not pws.v and not patrul and not aws.v then
+    if not mws.v and not sws.v and not infbr.v and not bws.v and not fastmenu and not dws.v and not ows.v and not fws.v and not pws.v and not patrul and not aws.v and not uws.v then
         imgui.Process = false
     end
 
@@ -345,10 +345,11 @@ function imgui.OnDrawFrame()
     local useModRacia = imgui.ImBool(mainIni.config.modRacia)
     local useModMembers = imgui.ImBool(mainIni.config.modMembers)
     local useInfBr = imgui.ImBool(mainIni.config.infbr)
+    local useMetka = imgui.ImBool(mainIni.settings.metka)
 
     local numClist = imgui.ImInt(mainIni.config.acls)
     local fastStyle = imgui.ImInt(binderIni.fset.style)
-
+    local StyleScript = imgui.ImInt(mainIni.settings.style)
     -------- check box infobar------
     local useShowTitle = imgui.ImBool(infIni.sett.ShowTitle)
     local useShowNick = imgui.ImBool(infIni.sett.ShowNick)
@@ -381,7 +382,7 @@ function imgui.OnDrawFrame()
         end
         imgui.AlignTextToFramePadding()
         
-        if imgui.Button(u8'Биндер',btn_size) then bws.v = not bws.v end
+        if imgui.Button(u8'Биндер',btn_size) then bws.v = not bws.v; changeBind = nil;imwin = 32 end
 
         if imgui.Button(u8'Онлайн',btn_size) then ows.v = not ows.v end
 
@@ -407,6 +408,7 @@ function imgui.OnDrawFrame()
             if imgui.Selectable(u8'Основные') then imwin = 0 end
             if imgui.Selectable(u8'Инфо-Бар') then imwin = 1 end
             if imgui.Selectable(u8'Авто-БП') then imwin = 2 end
+            if imgui.Selectable(u8'Цвет') then imwin = 3 end
 
         imgui.EndChild()
 
@@ -415,45 +417,27 @@ function imgui.OnDrawFrame()
         imgui.BeginChild(u8'Настройки',_,true)
             if imwin == 0 then
 
-                if imadd.ToggleButton("##modr", useModRacia) then
-                    mainIni.config.modRacia = useModRacia.v
-                    inicfg.save(mainIni,dcf)
-                end
+                if imadd.ToggleButton("##modr", useModRacia) then mainIni.config.modRacia = useModRacia.v end
 
                 imgui.SameLine()
 
                 imgui.Text(u8'Модифицированая Рация')
 
-                if imadd.ToggleButton("##modm", useModMembers) then
-                    mainIni.config.modMembers = useModMembers.v
-                    inicfg.save(mainIni,dcf)
-                end
+                if imadd.ToggleButton("##modm", useModMembers) then mainIni.config.modMembers = useModMembers.v end
 
                 imgui.SameLine()
 
                 imgui.Text(u8'Модифицированая Members')
 
-                if imgui.Checkbox(u8'Открывать чат на Т',useChatT) then
-                    mainIni.settings.chatT = useChatT.v
-                    inicfg.save(mainIni,dcf)
-                end
+                if imgui.Checkbox(u8'Открывать чат на Т',useChatT) then mainIni.settings.chatT = useChatT.v end
 
-                if imgui.Checkbox(u8'Использовать Авто-тег',useAutoTeg) then
-                    mainIni.settings.autoTeg = useAutoTeg.v
-                    inicfg.save(mainIni,dcf)
-                end
+                if imgui.Checkbox(u8'Использовать Авто-тег',useAutoTeg) then mainIni.settings.autoTeg = useAutoTeg.v end
 
-                if mainIni.settings.autoTeg then
-                    if imgui.InputText(u8'Введите ваш тег',inputRteg) then
-                        mainIni.config.rteg = u8:decode(inputRteg.v)
-                        inicfg.save(mainIni,dcf)
-                    end
-                end
+                if mainIni.settings.autoTeg then if imgui.InputText(u8'Введите ваш тег',inputRteg) then mainIni.config.rteg = u8:decode(inputRteg.v) end end
 
-                if imgui.Checkbox(u8'Использовать Авто-Клист',useAutoClist) then
-                    mainIni.settings.autoClist = useAutoClist.v
-                    inicfg.save(mainIni,dcf)
-                end
+                if imgui.Checkbox(u8'Ставить метку на сигнал СОС',useMetka) then mainIni.settings.metka = useMetka.v end
+
+                if imgui.Checkbox(u8'Использовать Авто-Клист',useAutoClist) then mainIni.settings.autoClist = useAutoClist.v end
 
                 if mainIni.settings.autoClist then
                     imgui.SliderInt(u8"Номер клиста", numClist, 1, 33)
@@ -463,6 +447,7 @@ function imgui.OnDrawFrame()
 
                 imgui.Separator()
 
+                inicfg.save(mainIni,dcf)
             elseif imwin == 1 then
                 
                 imgui.Text(u8'Использовать Инфо-Бар')
@@ -641,6 +626,14 @@ function imgui.OnDrawFrame()
                         inicfg.save(mainIni,dcf)
                     end
                 end
+            elseif imwin == 3 then
+                if imgui.RadioButton(u8'Зеленый',StyleScript,0) then mainIni.settings.style = StyleScript.v end
+                if imgui.RadioButton(u8'Синий',StyleScript,1) then mainIni.settings.style = StyleScript.v end
+                if imgui.RadioButton(u8'Оранжевый',StyleScript,2) then mainIni.settings.style = StyleScript.v end
+                if imgui.RadioButton(u8'Фиолетовый',StyleScript,3) then mainIni.settings.style = StyleScript.v end
+                if imgui.RadioButton(u8'Серый',StyleScript,4) then mainIni.settings.style = StyleScript.v end
+                if imgui.RadioButton(u8'Черная',StyleScript,5) then mainIni.settings.style = StyleScript.v end
+                inicfg.save(mainIni,dcf)
             end
         imgui.EndChild()
         imgui.End()
@@ -661,7 +654,13 @@ function imgui.OnDrawFrame()
 
         end
 
-        if infIni.sett.ShowNick then imgui.TextColoredRGB(u8(string.format('Ник: {%s}%s{SSSSSS}. Ваш ID: %s',MyColor,MyName,MyId))) end
+        if infIni.sett.ShowNick then
+            if MaskOn then
+                imgui.TextColoredRGB(u8(string.format('Ник: {%s}%s{SSSSSS}[в маске]. Ваш ID: %s',MyColor,MyName,MyId)))
+            else
+                imgui.TextColoredRGB(u8(string.format('Ник: {%s}%s{SSSSSS}. Ваш ID: %s',MyColor,MyName,MyId)))
+            end
+        end
         
         if infIni.sett.ShowStut then imgui.Text(string.format('HP: %s. Armor: %s',MyHealth,MyArmor)) end
 
@@ -713,65 +712,106 @@ function imgui.OnDrawFrame()
 
         imgui.ShowCursor = true
 
-        imgui.SetNextWindowSize(imgui.ImVec2(780, 314), imgui.Cond.FirstUseEver) -- resoluthion window
+        imgui.SetNextWindowSize(imgui.ImVec2(780, 335), imgui.Cond.FirstUseEver) -- resoluthion window
         imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5)) -- in center monitor
         imgui.Begin(u8'Биндер',bws,imgui.WindowFlags.NoResize)
-
         imgui.BeginChild('Редактирование',imgui.ImVec2(640,280),true)
         i = 0
         if changeBind then
-            if binderIni[changeBind] then
-                levelBinder[1] = imgui.ImBuffer(u8(binderIni[changeBind].name),32) -- название
-                levelBinder[2] = imgui.ImBuffer(u8(binderIni[changeBind].act),24) -- команда активации
-                levelBinder[3] = imgui.ImBuffer(u8(binderIni[changeBind].wait),16) -- пауза
-                levelBinder[4] = imgui.ImBuffer(1024) -- редактор
-            
-                for g = 1, 30 do
-                    if binderIni[changeBind][g] == nil then
-                        break
-                    else
-                        if g == 1 then
-                            levelBinder[4].v = u8(binderIni[changeBind][g])
+            if imwin == 32 then
+                if binderIni[changeBind] then
+                    levelBinder[1] = imgui.ImBuffer(u8(binderIni[changeBind].name),32) -- название
+                    levelBinder[2] = imgui.ImBuffer(u8(binderIni[changeBind].act),24) -- команда активации
+                    levelBinder[3] = imgui.ImBuffer(u8(binderIni[changeBind].wait),16) -- пауза
+                    levelBinder[4] = imgui.ImBuffer(1024) -- редактор
+                
+                    for g = 1, 30 do
+                        if binderIni[changeBind][g] == nil then
+                            break
                         else
-                            levelBinder[4].v = levelBinder[4].v .. "\n" .. u8(binderIni[changeBind][g])
-                            levelBinder[4].v = levelBinder[4].v
+                            if g == 1 then
+                                levelBinder[4].v = u8(binderIni[changeBind][g])
+                            else
+                                levelBinder[4].v = levelBinder[4].v .. "\n" .. u8(binderIni[changeBind][g])
+                                levelBinder[4].v = levelBinder[4].v
+                            end
                         end
                     end
                 end
-            
-                imgui.PushItemWidth(175)
+            elseif imwin == 33 then
+                if binderIni['b'..changeBind] then
+                    changeButton = {
+                        v = decodeJson(binderIni['b'..changeBind].act)
+                    }
+                    
+                    levelBinder[1] = imgui.ImBuffer(u8(binderIni['b'..changeBind].name),32) -- название
+                    levelBinder[3] = imgui.ImBuffer(u8(binderIni['b'..changeBind].wait),16) -- пауза
+                    levelBinder[4] = imgui.ImBuffer(1024) -- редактор
                 
-                imgui.SetCursorPosX( 220,320)
-                if imgui.InputText(u8"Название бинда", levelBinder[1]) then
-                    binderIni[changeBind].name = u8:decode(levelBinder[1].v)
+                    for g = 1, 30 do
+                        if binderIni['b'..changeBind][g] == nil then
+                            break
+                        else
+                            if g == 1 then
+                                levelBinder[4].v = u8(binderIni['b'..changeBind][g])
+                            else
+                                levelBinder[4].v = levelBinder[4].v .. "\n" .. u8(binderIni['b'..changeBind][g])
+                                levelBinder[4].v = levelBinder[4].v
+                            end
+                        end
+                    end
                 end
-                imgui.PopItemWidth()
+            end
 
-                imgui.PushItemWidth(125)
+            imgui.PushItemWidth(175)
+            
+            imgui.SetCursorPosX( 220,320)
+            if imgui.InputText(u8"Название бинда", levelBinder[1]) then
+                if imwin == 32 then binderIni[changeBind].name = u8:decode(levelBinder[1].v) end
+                if imwin == 33 then binderIni['b'..changeBind].name = u8:decode(levelBinder[1].v) end
+            end
+            imgui.PopItemWidth()
+
+            imgui.PushItemWidth(125)
+            if imwin == 32 then
                 if imgui.InputText(u8'Команда активации',levelBinder[2]) then
                     binderIni[changeBind].act = u8:decode(levelBinder[2].v)
                 end
-
+            elseif imwin == 33 then
+                imgui.Text(u8'Кнопка активации: ')
                 imgui.SameLine()
-
-                imgui.SetCursorPosX( 405,_)
-
-                imgui.Text(u8'Задержка(в мс):')
-                
-                imgui.SameLine()
-
-                imgui.SetCursorPosX( 505,_)
-
-                if imgui.InputText(u8'##6',levelBinder[3]) then
-                    binderIni[changeBind].wait = u8:decode(levelBinder[3].v)
+                if imgui.HotKey("###"..changeBind, changeButton, tLastKeys, 75) then
+                    if ButtonActiveted then
+                        rkeys.changeHotKey(ButtonActiveted, changeButton.v)
+                    else
+                        ButtonActiveted = rkeys.registerHotKey(changeButton.v, true,onHotKey)
+                    end
+                    binderIni['b'..changeBind].act = encodeJson(changeButton.v)
                 end
+            end
+                
+            imgui.SameLine()
 
-                imgui.PopItemWidth()
+            imgui.SetCursorPosX( 405,_)
+
+            imgui.Text(u8'Задержка(в мс):')
+            
+            imgui.SameLine()
+
+            imgui.SetCursorPosX( 505,_)
+
+            if imgui.InputText(u8'##6',levelBinder[3]) then
+                if imwin == 32 then binderIni[changeBind].wait = u8:decode(levelBinder[3].v) end
+                if imwin == 33 then binderIni['b'..changeBind].wait = u8:decode(levelBinder[3].v) end
+            end
+
+            imgui.PopItemWidth()
 
 
-                imgui.CenterText(u8'Редактор')
-                imgui.InputTextMultiline('##2', levelBinder[4], imgui.ImVec2(640, 178))
+            imgui.CenterText(u8'Редактор')
+            imgui.InputTextMultiline('##2', levelBinder[4], imgui.ImVec2(640, 178))
 
+            if imwin == 32 then
                 for b = 1, 30 do
                     if binderIni[changeBind] ~= nil then
                         if binderIni[changeBind][b] ~= nil then
@@ -783,26 +823,44 @@ function imgui.OnDrawFrame()
                         break
                     end
                 end
+            elseif imwin == 33 then
+                for b = 1, 30 do
+                    if binderIni['b'..changeBind] ~= nil then
+                        if binderIni['b'..changeBind][b] ~= nil then
+                            binderIni['b'..changeBind][b] = nil
+                        else
+                            break
+                        end
+                    else
+                        break
+                    end
+                end
+            end
 
+            if imwin == 32 then
                 for s in string.gmatch(u8:decode(levelBinder[4].v), "[^\r\n]+") do
                     i = i + 1
                     binderIni[changeBind][i] = s
                 end
-
-                if imgui.Button(u8'Доп.Возможности') then
-                    dws.v = not dws.v
-                    imwin = 10
+            elseif imwin == 33 then
+                for s in string.gmatch(u8:decode(levelBinder[4].v), "[^\r\n]+") do
+                    i = i + 1
+                    binderIni['b'..changeBind][i] = s
                 end
+            end
 
-                imgui.SameLine()
+            if imgui.Button(u8'Доп.Возможности') then dws.v = not dws.v end
 
-                imgui.TextQuestion("( ? )", u8"Что-бы закрыть окно,нажмите ещё раз на кнопку")
+            imgui.SameLine()
 
-                imgui.SameLine()
+            imgui.TextQuestion("( ? )", u8"Что-бы закрыть окно,нажмите ещё раз на кнопку")
 
-                imgui.SetCursorPosX( 544,_)
+            imgui.SameLine()
 
-                if imgui.Button(u8'Удалить бинд') then
+            imgui.SetCursorPosX( 544,_)
+
+            if imgui.Button(u8'Удалить бинд') then
+                if imwin == 32 then
                     for i = 0,30 do
                         binderIni[changeBind][i] = nil
                     end
@@ -811,7 +869,17 @@ function imgui.OnDrawFrame()
                     binderIni[changeBind].name = nil
                     binderIni[changeBind] = nil
                     imgui.CloseCurrentPopup()
+                elseif imwin == 33 then
+                    for i = 0,30 do
+                        binderIni['b'..changeBind][i] = nil
+                    end
+                    binderIni['b'..changeBind].wait = nil
+                    binderIni['b'..changeBind].act = nil
+                    binderIni['b'..changeBind].name = nil
+                    binderIni['b'..changeBind] = nil
+                    imgui.CloseCurrentPopup()
                 end
+                changeBind = nil
             end
             inicfg.save(binderIni,dcb)
         end
@@ -821,27 +889,53 @@ function imgui.OnDrawFrame()
         imgui.SameLine()
 
         imgui.BeginChild('Выбор',imgui.ImVec2(120,280),true)
-            for i = 0, line_binder + 10 do
-                if binderIni[i] then
-                    if imgui.Selectable(u8(binderIni[i].name)) then changeBind = i end
+            if imwin == 32 then
+                for i = 0, line_binder + 10 do
+                    if binderIni[i] then
+                        if imgui.Selectable(u8(binderIni[i].name)) then changeBind = i end
+                    end
+                end
+            elseif imwin == 33 then
+                for i = 0, line_binder + 10 do
+                    if binderIni['b'..i] then
+                        if imgui.Selectable(u8(binderIni['b'..i].name)) then changeBind = i end
+                    end
                 end
             end
             if imgui.Button(u8'Добавить бинд') then
-                for i = 1,line_binder + 10 do
-                    if binderIni[i] == nil or binderIni[i] == '' then
-                        binderIni[i] = {}
-                        g = 'name'
-                        binderIni[i][g] = 'Бинд №'..i
-                        binderIni[i][1] = ''
-                        binderIni[i].act = ''
-                        binderIni[i].wait = 1000
-                        inicfg.save(binderIni,dcb)
-                        break
+                if imwin == 32 then
+                    for i = 1,line_binder + 10 do
+                        if binderIni[i] == nil or binderIni[i] == '' then
+                            binderIni[i] = {}
+                            g = 'name'
+                            binderIni[i][g] = 'Бинд №'..i
+                            binderIni[i][1] = ''
+                            binderIni[i].act = ''
+                            binderIni[i].wait = 1000
+                            inicfg.save(binderIni,dcb)
+                            break
+                        end
+                    end
+                elseif imwin == 33 then
+                    for i = 1,line_binder + 10 do
+                        if binderIni['b'..i] == nil or binderIni['b'..i] == '' then
+                            binderIni['b'..i] = {}
+                            g = 'name'
+                            binderIni['b'..i][g] = 'Кнопка №'..i
+                            binderIni['b'..i][1] = ''
+                            binderIni['b'..i].act = '{}'
+                            binderIni['b'..i].wait = 1000
+                            inicfg.save(binderIni,dcb)
+                            break
+                        end
                     end
                 end
             end
         imgui.EndChild()
-    
+
+        imgui.SetCursorPosX(330)
+        if imwin == 32 then if imgui.Button(u8'Кнопочный биндер') then imwin = 33 changeBind = nil end end
+        if imwin == 33 then if imgui.Button(u8'Командный биндер') then imwin = 32 changeBind = nil end end
 
         imgui.End()
     end
@@ -851,10 +945,8 @@ function imgui.OnDrawFrame()
         imgui.SetNextWindowPos(imgui.ImVec2((sw/2 + 385),(sh/2)-100),imgui.ImVec2(0.5,0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(300, 250), imgui.Cond.FirstUseEver)
         imgui.Begin('dop',_,imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar)
-        if imwin == 10 and bws.v then
+        if bws.v or dws.v then
             imgui.Text(u8(DopText))
-        elseif imwin == 11 and fws.v then
-            imgui.Text(u8(DopTextFast))
         else
             dws.v = false
         end
@@ -864,14 +956,6 @@ function imgui.OnDrawFrame()
 
     if fastmenu then
         
-        _,MyId = sampGetPlayerIdByCharHandle(PLAYER_PED)
-        MyName = sampGetPlayerNickname(MyId)
-        TargetNick = sampGetPlayerNickname(tid)
-        NowDate = os.date('%H:%M:%S')
-
-        modBinder = {['MyId']=MyId,['MyName']=MyName,['MyNameR'] = MyName:gsub('_',' '),['TarName'] = TargetNick,
-        ['TarNameR'] = TargetNick:gsub('_',' '),['TarID'] = tid,['KV']=kvadrat(),['MyTeg']=mainIni.config.rteg,['MyRang']=mainIni.config.rangName,
-        ['NowDate'] = NowDate}
         imgui.SetNextWindowPos(imgui.ImVec2(sw/2,sh/2))
         imgui.OpenPopup('PieMenu')
         if binderIni.fset.style == 0 then
@@ -890,6 +974,7 @@ function imgui.OnDrawFrame()
                                                     if binderIni['f'..i][n..'x'..z] then
                                                         text = binderIni['f'..i][n..'x'..z]
                                                         for word in string.gmatch(text, "{(%a+)}") do
+                                                            modBinder = ModerBinder()
                                                             if modBinder[word] then
                                                                 text = string.gsub(text,'{'..word..'}',modBinder[word])
                                                             end
@@ -1084,7 +1169,7 @@ function imgui.OnDrawFrame()
 
                         imgui.SameLine()
 
-                        if imgui.InputText('##b6', levelBinder[3]) then
+                        if imgui.InputText('##b10', levelBinder[3]) then
                             binderIni['f'..i]['wait'..changeBind] = u8:decode(levelBinder[3].v)
                         end
 
@@ -1107,7 +1192,6 @@ function imgui.OnDrawFrame()
                         end
                         if imgui.Button(u8'Доп.Возможности') then
                             dws.v = not dws.v
-                            imwin = 11
                         end
                         imgui.SameLine(525)
                         if imgui.Button(u8'Удалить под меню') then
@@ -1321,6 +1405,32 @@ function imgui.OnDrawFrame()
         imgui.End()
     end
 
+    if uws.v then
+
+        imgui.ShowCursor = true
+
+        imgui.SetNextWindowSize(imgui.ImVec2(370, 130), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowPos(imgui.ImVec2(sw/2,sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
+        imgui.Begin(u8'Обновление',uws)
+
+        imgui.CenterText(u8(string.format('Доступно обновление до версии %s.',info.latest)))
+        imgui.CenterText(u8('Изменения: '..info.changes))
+        imgui.CenterText(u8'Обновить сейчас?')
+
+        if imgui.Button(u8'Да',imgui.ImVec2(175,25)) then 
+            uws.v = false 
+            sampAddChatMessage(sname..'Началось обновление скрипта',-1)
+            link = info.updateurl
+            os.remove(pathupd)
+            path = getWorkingDirectory()..'\\LVaHelper.lua'
+            downloadUrlToFile(link, path, download_handler)
+        end
+        imgui.SameLine()
+        if imgui.Button(u8'Нет',imgui.ImVec2(175,25)) then print('ne обновлено') uws.v = false end
+ 
+        imgui.End()
+    end
+
 end
 
 
@@ -1330,8 +1440,6 @@ end
 function main()
     if not isSampLoaded() then return end
     while not isSampAvailable() do wait(0) end
-
-    apply_custom_style()
 
     local _,MyId = sampGetPlayerIdByCharHandle(PLAYER_PED)
     local MyName = sampGetPlayerNickname(MyId)
@@ -1353,11 +1461,30 @@ function main()
     dcp = mainDirectory..'\\post.ini'
     postIni = inicfg.load(nil,dcp)
 
+    if doesFileExist(dcf) then
+        apply_custom_style(mainIni.settings.style)
+    else
+        apply_custom_style(0)
+    end
+
+
+    buttonbind = {}
     if doesFileExist(dcb) then
         ActiveFastMenu = {
             v = decodeJson(binderIni.fset.act)
         }
         ActiveFast = rkeys.registerHotKey(ActiveFastMenu.v, true, actfast)
+        for i=1,line_binder do
+            if binderIni['b'..i] then
+                if binderIni['b'..i].act ~= '{}' or binderIni['b'..i].act ~= '' then 
+                    table.insert(buttonbind,{v=binderIni['b'..i].act,z=i})
+                end
+            end
+        end
+        for k, v in ipairs(buttonbind) do
+            ButtonActiveted = rkeys.registerHotKey(decodeJson(v.v), true,onHotKey)
+        end
+
     end
 
     updateTime()
@@ -1380,7 +1507,7 @@ function main()
     sampRegisterChatCommand('logsms',cmd_logsms)
     sampRegisterChatCommand('getm',cmd_getm)
     sampRegisterChatCommand('post',cmd_post)
-
+    sampRegisterChatCommand('findkv',cmd_findkv)
 
     while not sampIsLocalPlayerSpawned() do wait(0) end
     
@@ -1405,14 +1532,19 @@ function main()
     if mainIni.config.infbr then
         imgui.Process = true
         imgui.ShowCursor = false
-    else
-        imgui.Process = false
     end
 
     lua_thread.create(time)
 
 
     while true do
+
+        if doesFileExist(dcf) then
+            apply_custom_style(mainIni.settings.style)
+        else
+            apply_custom_style(0)
+        end
+
 
 
         if doesFileExist(dcf) then
@@ -1466,6 +1598,14 @@ function main()
             end
         end
 
+        for i=1,line_binder do
+            if binderIni['b'..i] then
+                if binderIni['b'..i].act ~= '{}' or binderIni['b'..i].act ~= '' then 
+                    table.insert(buttonbind,{v=binderIni['b'..i].act,z=i})
+                end
+            end
+        end
+
         if mouseCord then
 			sampToggleCursor(true)
 			CPX, CPY = getCursorPos()
@@ -1495,6 +1635,34 @@ function main()
 		end
 
         wait(0)
+    end
+end
+
+function onHotKey(id,keys)
+    for i = 1,20 do
+        if binderIni['b'..i] then
+            if encodeJson(keys) == binderIni['b'..i].act then
+                lua_thread.create(function()
+                    if sampIsChatInputActive() or sampIsDialogActive() or isSampfuncsConsoleActive() then
+
+                    else
+                        if binderIni['b'..i] then
+                            for z =1,#binderIni['b'..i] do
+                                text = binderIni['b'..i][z]
+                                for word in string.gmatch(text, "{(%a+)}") do
+                                    modBinder = ModerBinder()
+                                    if modBinder[word] then
+                                        text = string.gsub(text,'{'..word..'}',modBinder[word])
+                                    end
+                                end
+                                sampSendChat(text)
+                                wait(binderIni['b'..i].wait)
+                            end
+                        end
+                    end
+                end)
+            end
+        end
     end
 end
 
@@ -1736,42 +1904,6 @@ function sampev.onShowDialog(dialogID, style, title, button1, button2, text)
 end
 
 function sampev.onSendCommand(command)
-    _,MyId = sampGetPlayerIdByCharHandle(PLAYER_PED)
-    MyName = sampGetPlayerNickname(MyId)
-    TargetNick = sampGetPlayerNickname(tid)
-    NowDate = os.date('%H:%M:%S')
-
-
-    if isCharInAnyCar(PLAYER_PED) then
-        CarHandle = getCarCharIsUsing(PLAYER_PED)
-        IDcar = getCarModel(CarHandle)
-        CarHealth = getCarHealth(CarHandle)
-        CarName = CarsName[IDcar-399]
-
-        n = 0
-
-        for i = 0, sampGetMaxPlayerId(true) do
-            bool, playerHandle = sampGetCharHandleBySampPlayerId(i)
-            if bool and doesCharExist(playerHandle) then
-                passCar = getCarCharIsUsing(playerHandle)
-                if doesVehicleExist(passCar) and CarHandle == passCar then
-                    n = n + 1
-                    if n > 1 then
-                        PassegerID = PassegerID..','..i
-                        name = sampGetPlayerNickname(i)
-                        PassegerName = PassegerName..','..name:gsub('_',' ')
-                    else
-                        PassegerName = sampGetPlayerNickname(i):gsub('_',' ')
-                        PassegerID = i
-                    end
-                end
-            end
-        end
-    end
-    modBinder = {['MyId']=MyId,['MyName']=MyName,['MyNameR'] = MyName:gsub('_',' '),['TarName'] = TargetNick,
-    ['TarNameR'] = TargetNick:gsub('_',' '),['TarID'] = tid,['CarName']=CarName,['CarHealth'] = CarHealth,['PassegerName'] = PassegerName,
-    ['PassegerID'] = PassegerID,['KV']=kvadrat(),['MyTeg']=mainIni.config.rteg,['MyRang']=mainIni.config.rangName,
-    ['NowDate'] = NowDate}
     for i = 1,line_binder do
         if binderIni[i] then
             if binderIni[i].act:find('/') then
@@ -1784,11 +1916,12 @@ function sampev.onSendCommand(command)
                     for s = 1,#binderIni[i] do
                         text = binderIni[i][s]
                         for word in string.gmatch(text, "{(%a+)}") do
+                            modBinder = ModerBinder()
                             if modBinder[word] then
                                 text = string.gsub(text,'{'..word..'}',modBinder[word])
                             end
                         end
-                        sampSendChat(text)
+                        sampAddChatMessage(text,-1)
                         wait(binderIni[i].wait)
                     end
                 end)
@@ -1816,6 +1949,13 @@ function sampev.onServerMessage(color, text)
         inicfg.save(postIni,dcp) 
     end
 
+    if mainIni.config.metka then
+        if (text:find('SOS') or text:find('sos') or text:find('СОС') or text:find('сос') ) and text:match("(%A)-(%d+)") and not text:find(MyName) then
+            kvx,kvy = text:match("(%A)-(%d+)")
+            cmd_findkv(kvx..'-'..kvy)
+        end
+    end
+
     if doesFileExist(dcf) then
         if text:find('Рабочий день начат') then
             if mainIni.settings.autoClist then
@@ -1826,6 +1966,18 @@ function sampev.onServerMessage(color, text)
                 end)
             end
         end
+
+        if text:find('Вы надели маску') then MaskOn = true end 
+
+        if text:find('Вы сняли с себя маску') then
+            lua_thread.create(function()
+                MaskOn = false
+                wait(100)
+                sampSendChat('/clist '..mainIni.config.acls)
+                sampAddChatMessage(sname..'Клист изменён',-1)
+            end)
+        end
+
         if mainIni.config.modRacia then
             if color == 33357768 or color == -1920073984 and not text:find('отобрал рацию у') and not text:find('вернул рацию ') then
                 local mod = text:match('(%S+): .+'):gsub(" ", "")
@@ -1841,8 +1993,12 @@ function sampev.onServerMessage(color, text)
             end
         end
         if mainIni.config.modMembers then
-            if text:match('ID: .+ | .+ | .+: .+ %- .+') then
-                local id, data, nick, rang, stat = text:match('ID: (%d+) | (.+) | (.+): (.+) %- (.+)')
+            if text:match('ID: .+ | .+ | .+: .+ %- .+') or text:match('ID: .+ | .+ | .+: .+') then
+                if text:match('ID: .+ | .+ | .+: .+ %- .+') then
+                    id, data, nick, rang, stat = text:match('ID: (%d+) | (.+) | (.+): (.+) %- (.+)')
+                else
+                    id, data, nick, rang = text:match('ID: (%d+) | (.+) | (.+): (.+)')
+                end
                 color = bit.lshift(sampGetPlayerColor(id), 8)
                 return {color,text}
             end
@@ -1882,7 +2038,7 @@ function onWindowMessage(msg, wparam, lparam)
                     end
                 elseif bws.v then
                     if changeBind then
-                        changeBind = false
+                        changeBind = nil
                     else
                         bws.v = false
                     end
@@ -1932,6 +2088,46 @@ function ARGBtoRGB(color)
 end
 
 ---------------------------------------------------------
+function ModerBinder()
+    _,MyId = sampGetPlayerIdByCharHandle(PLAYER_PED)
+    MyName = sampGetPlayerNickname(MyId)
+    TargetNick = sampGetPlayerNickname(tid)
+    NowDate = os.date('%H:%M:%S')
+
+
+    if isCharInAnyCar(PLAYER_PED) then
+        CarHandle = getCarCharIsUsing(PLAYER_PED)
+        IDcar = getCarModel(CarHandle)
+        CarHealth = getCarHealth(CarHandle)
+        CarName = CarsName[IDcar-399]
+
+        n = 0
+
+        for i = 0, sampGetMaxPlayerId(true) do
+            bool, playerHandle = sampGetCharHandleBySampPlayerId(i)
+            if bool and doesCharExist(playerHandle) then
+                passCar = getCarCharIsUsing(playerHandle)
+                if doesVehicleExist(passCar) and CarHandle == passCar then
+                    n = n + 1
+                    if n > 1 then
+                        PassegerID = PassegerID..','..i
+                        name = sampGetPlayerNickname(i)
+                        PassegerName = PassegerName..','..name:gsub('_',' ')
+                    else
+                        PassegerName = sampGetPlayerNickname(i):gsub('_',' ')
+                        PassegerID = i
+                    end
+                end
+            end
+        end
+    end
+    modBinder = {['MyId']=MyId,['MyName']=MyName,['MyNameR'] = MyName:gsub('_',' '),['TarName'] = TargetNick,
+    ['TarNameR'] = TargetNick:gsub('_',' '),['TarID'] = tid,['CarName']=CarName,['CarHealth'] = CarHealth,['PassegerName'] = PassegerName,
+    ['PassegerID'] = PassegerID,['KV']=kvadrat(),['MyTeg']=mainIni.config.rteg,['MyRang']=mainIni.config.rangName,
+    ['NowDate'] = NowDate}
+    return modBinder
+end
+
 function checkDirectory(arg)
     local directFolder = getWorkingDirectory().."\\cfg\\"..arg
     if doesDirectoryExist(directFolder) then
@@ -1998,6 +2194,22 @@ function checkDirectory(arg)
     else
         downloadUrlToFile('https://raw.githubusercontent.com/n1cho/EvolveRochester/main/cfg/imgui_piemenu.lua', checkPie, download_handler)
         restart = true
+    end
+
+
+    pathupd = getWorkingDirectory()..'\\update.json'
+    linkupd = 'https://raw.githubusercontent.com/n1cho/EvolveRochester/main/update.json'
+    downloadUrlToFile(linkupd, pathupd, download_handler)
+    f = io.open(pathupd,'r')
+    if f then
+        info = decodeJson(f:read('*a'))
+        if info.latest ~= thisScript().version then
+            uws.v = true 
+            if not imgui.Process then
+                imgui.Process = uws.v
+            end
+        end
+        f.close()
     end
 
     if restart then
@@ -2184,6 +2396,40 @@ function kvadrat(KV)
 		local KVX = (Y.."-"..X)
     return KVX
 end
+
+------- find kv
+function cmd_findkv(arg)
+    if #arg > 0 then
+        if arg:match("(%A)-(%d+)") then
+            local kvy, kvx = arg:match("(%A)-(%d+)")
+            if getKVNumber(kvy) then
+                kvx = kvx * 250 - 3125
+                kvy = (getKVNumber(kvy) * 250 - 3125) * - 1
+                placeWaypoint(kvx, kvy, 0)
+            else
+                sampAddChatMessage(sname..'Не удалось определить квадрат,возможно вы написали квадрат с маленькой буквы',-1)
+            end
+        else
+            sampAddChatMessage(sname..'Вы неверно ввели аргумент, пример: {51964D}/findkv{FFFFFF} Д-14',-1)
+        end
+    else
+        sampAddChatMessage(sname..'Вы неверно ввели аргумент, пример: {51964D}/findkv{FFFFFF} Д-14',-1)
+    end
+end
+
+function getKVNumber(param)
+    local KV = {"А","Б","В","Г","Д","Ж","З","И","К","Л","М","Н","О","П","Р","С","Т","У","Ф","Х","Ц","Ч","Ш","Я"}
+    return table.getIndexID(KV, param)
+  end
+
+function table.getIndexID(object, value)
+    for k, v in pairs(object) do
+       if v == value then
+          return k
+       end
+    end
+    return nil
+end
 ------ timer --------
 function onScriptTerminate(script, quitGame)
     if script == thisScript() then
@@ -2197,64 +2443,326 @@ function get_clock(time)
     return os.date((onDay and math.floor(time / 86400)..'д ' or '')..'%H:%M:%S', time + timezone_offset)
 end
 ---- thems ----------
-function apply_custom_style()
+function apply_custom_style(arg)
     imgui.SwitchContext()
     local style = imgui.GetStyle()
     local colors = style.Colors
     local clr = imgui.Col
     local ImVec4 = imgui.ImVec4
+    local ImVec2 = imgui.ImVec2
+    
+    if arg == 0 then -- green
+        style.WindowRounding = 2.0
+        style.WindowTitleAlign = imgui.ImVec2(0.5, 0.84)
+        style.ChildWindowRounding = 2.0
+        style.FrameRounding = 2.0
+        style.ItemSpacing = imgui.ImVec2(5.0, 4.0)
+        style.ScrollbarSize = 13.0
+        style.ScrollbarRounding = 0
+        style.GrabMinSize = 8.0
+        style.GrabRounding = 1.0
 
-    style.WindowRounding = 2.0
-    style.WindowTitleAlign = imgui.ImVec2(0.5, 0.84)
-    style.ChildWindowRounding = 2.0
-    style.FrameRounding = 2.0
-    style.ItemSpacing = imgui.ImVec2(5.0, 4.0)
-    style.ScrollbarSize = 13.0
-    style.ScrollbarRounding = 0
-    style.GrabMinSize = 8.0
-    style.GrabRounding = 1.0
+        colors[clr.FrameBg]                = ImVec4(0.42, 0.48, 0.16, 0.54)
+        colors[clr.FrameBgHovered]         = ImVec4(0.85, 0.98, 0.26, 0.40)
+        colors[clr.FrameBgActive]          = ImVec4(0.85, 0.98, 0.26, 0.67)
+        colors[clr.TitleBg]                = ImVec4(0.04, 0.04, 0.04, 1.00)
+        colors[clr.TitleBgActive]          = ImVec4(0.42, 0.48, 0.16, 1.00)
+        colors[clr.TitleBgCollapsed]       = ImVec4(0.00, 0.00, 0.00, 0.51)
+        colors[clr.CheckMark]              = ImVec4(0.85, 0.98, 0.26, 1.00)
+        colors[clr.SliderGrab]             = ImVec4(0.77, 0.88, 0.24, 1.00)
+        colors[clr.SliderGrabActive]       = ImVec4(0.85, 0.98, 0.26, 1.00)
+        colors[clr.Button]                 = ImVec4(0.85, 0.98, 0.26, 0.40)
+        colors[clr.ButtonHovered]          = ImVec4(0.85, 0.98, 0.26, 1.00)
+        colors[clr.ButtonActive]           = ImVec4(0.82, 0.98, 0.06, 1.00)
+        colors[clr.Header]                 = ImVec4(0.85, 0.98, 0.26, 0.31)
+        colors[clr.HeaderHovered]          = ImVec4(0.85, 0.98, 0.26, 0.80)
+        colors[clr.HeaderActive]           = ImVec4(0.85, 0.98, 0.26, 1.00)
+        colors[clr.Separator]              = colors[clr.Border]
+        colors[clr.SeparatorHovered]       = ImVec4(0.63, 0.75, 0.10, 0.78)
+        colors[clr.SeparatorActive]        = ImVec4(0.63, 0.75, 0.10, 1.00)
+        colors[clr.ResizeGrip]             = ImVec4(0.85, 0.98, 0.26, 0.25)
+        colors[clr.ResizeGripHovered]      = ImVec4(0.85, 0.98, 0.26, 0.67)
+        colors[clr.ResizeGripActive]       = ImVec4(0.85, 0.98, 0.26, 0.95)
+        colors[clr.PlotLines]              = ImVec4(0.61, 0.61, 0.61, 1.00)
+        colors[clr.PlotLinesHovered]       = ImVec4(1.00, 0.81, 0.35, 1.00)
+        colors[clr.TextSelectedBg]         = ImVec4(0.85, 0.98, 0.26, 0.35)
+        colors[clr.Text]                   = ImVec4(1.00, 1.00, 1.00, 1.00)
+        colors[clr.TextDisabled]           = ImVec4(0.50, 0.50, 0.50, 1.00)
+        colors[clr.WindowBg]               = ImVec4(0.06, 0.06, 0.06, 0.94)
+        colors[clr.ChildWindowBg]          = ImVec4(1.00, 1.00, 1.00, 0.00)
+        colors[clr.PopupBg]                = ImVec4(0.08, 0.08, 0.08, 0.94)
+        colors[clr.ComboBg]                = colors[clr.PopupBg]
+        colors[clr.Border]                 = ImVec4(0.43, 0.43, 0.50, 0.50)
+        colors[clr.BorderShadow]           = ImVec4(0.00, 0.00, 0.00, 0.00)
+        colors[clr.MenuBarBg]              = ImVec4(0.14, 0.14, 0.14, 1.00)
+        colors[clr.ScrollbarBg]            = ImVec4(0.02, 0.02, 0.02, 0.53)
+        colors[clr.ScrollbarGrab]          = ImVec4(0.31, 0.31, 0.31, 1.00)
+        colors[clr.ScrollbarGrabHovered]   = ImVec4(0.41, 0.41, 0.41, 1.00)
+        colors[clr.ScrollbarGrabActive]    = ImVec4(0.51, 0.51, 0.51, 1.00)
+        colors[clr.CloseButton]            = ImVec4(0.41, 0.41, 0.41, 0.50)
+        colors[clr.CloseButtonHovered]     = ImVec4(0.98, 0.39, 0.36, 1.00)
+        colors[clr.CloseButtonActive]      = ImVec4(0.98, 0.39, 0.36, 1.00)
+        colors[clr.PlotHistogram]          = ImVec4(0.90, 0.70, 0.00, 1.00)
+        colors[clr.PlotHistogramHovered]   = ImVec4(1.00, 0.60, 0.00, 1.00)
+        colors[clr.ModalWindowDarkening]   = ImVec4(0.80, 0.80, 0.80, 0.35)
+    elseif arg == 1 then -- blue
+        style.WindowRounding = 2.0
+        style.WindowTitleAlign = imgui.ImVec2(0.5, 0.84)
+        style.ChildWindowRounding = 2.0
+        style.FrameRounding = 2.0
+        style.ItemSpacing = imgui.ImVec2(5.0, 4.0)
+        style.ScrollbarSize = 13.0
+        style.ScrollbarRounding = 0
+        style.GrabMinSize = 8.0
+        style.GrabRounding = 1.0
 
-    colors[clr.FrameBg]                = ImVec4(0.42, 0.48, 0.16, 0.54)
-    colors[clr.FrameBgHovered]         = ImVec4(0.85, 0.98, 0.26, 0.40)
-    colors[clr.FrameBgActive]          = ImVec4(0.85, 0.98, 0.26, 0.67)
-    colors[clr.TitleBg]                = ImVec4(0.04, 0.04, 0.04, 1.00)
-    colors[clr.TitleBgActive]          = ImVec4(0.42, 0.48, 0.16, 1.00)
-    colors[clr.TitleBgCollapsed]       = ImVec4(0.00, 0.00, 0.00, 0.51)
-    colors[clr.CheckMark]              = ImVec4(0.85, 0.98, 0.26, 1.00)
-    colors[clr.SliderGrab]             = ImVec4(0.77, 0.88, 0.24, 1.00)
-    colors[clr.SliderGrabActive]       = ImVec4(0.85, 0.98, 0.26, 1.00)
-    colors[clr.Button]                 = ImVec4(0.85, 0.98, 0.26, 0.40)
-    colors[clr.ButtonHovered]          = ImVec4(0.85, 0.98, 0.26, 1.00)
-    colors[clr.ButtonActive]           = ImVec4(0.82, 0.98, 0.06, 1.00)
-    colors[clr.Header]                 = ImVec4(0.85, 0.98, 0.26, 0.31)
-    colors[clr.HeaderHovered]          = ImVec4(0.85, 0.98, 0.26, 0.80)
-    colors[clr.HeaderActive]           = ImVec4(0.85, 0.98, 0.26, 1.00)
-    colors[clr.Separator]              = colors[clr.Border]
-    colors[clr.SeparatorHovered]       = ImVec4(0.63, 0.75, 0.10, 0.78)
-    colors[clr.SeparatorActive]        = ImVec4(0.63, 0.75, 0.10, 1.00)
-    colors[clr.ResizeGrip]             = ImVec4(0.85, 0.98, 0.26, 0.25)
-    colors[clr.ResizeGripHovered]      = ImVec4(0.85, 0.98, 0.26, 0.67)
-    colors[clr.ResizeGripActive]       = ImVec4(0.85, 0.98, 0.26, 0.95)
-    colors[clr.PlotLines]              = ImVec4(0.61, 0.61, 0.61, 1.00)
-    colors[clr.PlotLinesHovered]       = ImVec4(1.00, 0.81, 0.35, 1.00)
-    colors[clr.TextSelectedBg]         = ImVec4(0.85, 0.98, 0.26, 0.35)
-    colors[clr.Text]                   = ImVec4(1.00, 1.00, 1.00, 1.00)
-    colors[clr.TextDisabled]           = ImVec4(0.50, 0.50, 0.50, 1.00)
-    colors[clr.WindowBg]               = ImVec4(0.06, 0.06, 0.06, 0.94)
-    colors[clr.ChildWindowBg]          = ImVec4(1.00, 1.00, 1.00, 0.00)
-    colors[clr.PopupBg]                = ImVec4(0.08, 0.08, 0.08, 0.94)
-    colors[clr.ComboBg]                = colors[clr.PopupBg]
-    colors[clr.Border]                 = ImVec4(0.43, 0.43, 0.50, 0.50)
-    colors[clr.BorderShadow]           = ImVec4(0.00, 0.00, 0.00, 0.00)
-    colors[clr.MenuBarBg]              = ImVec4(0.14, 0.14, 0.14, 1.00)
-    colors[clr.ScrollbarBg]            = ImVec4(0.02, 0.02, 0.02, 0.53)
-    colors[clr.ScrollbarGrab]          = ImVec4(0.31, 0.31, 0.31, 1.00)
-    colors[clr.ScrollbarGrabHovered]   = ImVec4(0.41, 0.41, 0.41, 1.00)
-    colors[clr.ScrollbarGrabActive]    = ImVec4(0.51, 0.51, 0.51, 1.00)
-    colors[clr.CloseButton]            = ImVec4(0.41, 0.41, 0.41, 0.50)
-    colors[clr.CloseButtonHovered]     = ImVec4(0.98, 0.39, 0.36, 1.00)
-    colors[clr.CloseButtonActive]      = ImVec4(0.98, 0.39, 0.36, 1.00)
-    colors[clr.PlotHistogram]          = ImVec4(0.90, 0.70, 0.00, 1.00)
-    colors[clr.PlotHistogramHovered]   = ImVec4(1.00, 0.60, 0.00, 1.00)
-    colors[clr.ModalWindowDarkening]   = ImVec4(0.80, 0.80, 0.80, 0.35)
+        colors[clr.FrameBg]                = ImVec4(0.16, 0.29, 0.48, 0.54)
+        colors[clr.FrameBgHovered]         = ImVec4(0.26, 0.59, 0.98, 0.40)
+        colors[clr.FrameBgActive]          = ImVec4(0.26, 0.59, 0.98, 0.67)
+        colors[clr.TitleBg]                = ImVec4(0.04, 0.04, 0.04, 1.00)
+        colors[clr.TitleBgActive]          = ImVec4(0.16, 0.29, 0.48, 1.00)
+        colors[clr.TitleBgCollapsed]       = ImVec4(0.00, 0.00, 0.00, 0.51)
+        colors[clr.CheckMark]              = ImVec4(0.26, 0.59, 0.98, 1.00)
+        colors[clr.SliderGrab]             = ImVec4(0.24, 0.52, 0.88, 1.00)
+        colors[clr.SliderGrabActive]       = ImVec4(0.26, 0.59, 0.98, 1.00)
+        colors[clr.Button]                 = ImVec4(0.26, 0.59, 0.98, 0.40)
+        colors[clr.ButtonHovered]          = ImVec4(0.26, 0.59, 0.98, 1.00)
+        colors[clr.ButtonActive]           = ImVec4(0.06, 0.53, 0.98, 1.00)
+        colors[clr.Header]                 = ImVec4(0.26, 0.59, 0.98, 0.31)
+        colors[clr.HeaderHovered]          = ImVec4(0.26, 0.59, 0.98, 0.80)
+        colors[clr.HeaderActive]           = ImVec4(0.26, 0.59, 0.98, 1.00)
+        colors[clr.Separator]              = colors[clr.Border]
+        colors[clr.SeparatorHovered]       = ImVec4(0.26, 0.59, 0.98, 0.78)
+        colors[clr.SeparatorActive]        = ImVec4(0.26, 0.59, 0.98, 1.00)
+        colors[clr.ResizeGrip]             = ImVec4(0.26, 0.59, 0.98, 0.25)
+        colors[clr.ResizeGripHovered]      = ImVec4(0.26, 0.59, 0.98, 0.67)
+        colors[clr.ResizeGripActive]       = ImVec4(0.26, 0.59, 0.98, 0.95)
+        colors[clr.TextSelectedBg]         = ImVec4(0.26, 0.59, 0.98, 0.35)
+        colors[clr.Text]                   = ImVec4(1.00, 1.00, 1.00, 1.00)
+        colors[clr.TextDisabled]           = ImVec4(0.50, 0.50, 0.50, 1.00)
+        colors[clr.WindowBg]               = ImVec4(0.06, 0.06, 0.06, 0.94)
+        colors[clr.ChildWindowBg]          = ImVec4(1.00, 1.00, 1.00, 0.00)
+        colors[clr.PopupBg]                = ImVec4(0.08, 0.08, 0.08, 0.94)
+        colors[clr.ComboBg]                = colors[clr.PopupBg]
+        colors[clr.Border]                 = ImVec4(0.43, 0.43, 0.50, 0.50)
+        colors[clr.BorderShadow]           = ImVec4(0.00, 0.00, 0.00, 0.00)
+        colors[clr.MenuBarBg]              = ImVec4(0.14, 0.14, 0.14, 1.00)
+        colors[clr.ScrollbarBg]            = ImVec4(0.02, 0.02, 0.02, 0.53)
+        colors[clr.ScrollbarGrab]          = ImVec4(0.31, 0.31, 0.31, 1.00)
+        colors[clr.ScrollbarGrabHovered]   = ImVec4(0.41, 0.41, 0.41, 1.00)
+        colors[clr.ScrollbarGrabActive]    = ImVec4(0.51, 0.51, 0.51, 1.00)
+        colors[clr.CloseButton]            = ImVec4(0.41, 0.41, 0.41, 0.50)
+        colors[clr.CloseButtonHovered]     = ImVec4(0.98, 0.39, 0.36, 1.00)
+        colors[clr.CloseButtonActive]      = ImVec4(0.98, 0.39, 0.36, 1.00)
+        colors[clr.PlotLines]              = ImVec4(0.61, 0.61, 0.61, 1.00)
+        colors[clr.PlotLinesHovered]       = ImVec4(1.00, 0.43, 0.35, 1.00)
+        colors[clr.PlotHistogram]          = ImVec4(0.90, 0.70, 0.00, 1.00)
+        colors[clr.PlotHistogramHovered]   = ImVec4(1.00, 0.60, 0.00, 1.00)
+        colors[clr.ModalWindowDarkening]   = ImVec4(0.80, 0.80, 0.80, 0.35)
+    elseif arg == 2 then -- orange
+        style.WindowRounding = 2.0
+        style.WindowTitleAlign = imgui.ImVec2(0.5, 0.84)
+        style.ChildWindowRounding = 2.0
+        style.FrameRounding = 2.0
+        style.ItemSpacing = imgui.ImVec2(5.0, 4.0)
+        style.ScrollbarSize = 13.0
+        style.ScrollbarRounding = 0
+        style.GrabMinSize = 8.0
+        style.GrabRounding = 1.0
+
+        colors[clr.Text] = ImVec4(0.80, 0.80, 0.83, 1.00)
+        colors[clr.TextDisabled] = ImVec4(0.24, 0.23, 0.29, 1.00)
+        colors[clr.WindowBg] = ImVec4(0.06, 0.05, 0.07, 1.00)
+        colors[clr.ChildWindowBg] = ImVec4(0.07, 0.07, 0.09, 1.00)
+        colors[clr.PopupBg] = ImVec4(0.07, 0.07, 0.09, 1.00)
+        colors[clr.Border] = ImVec4(0.80, 0.80, 0.83, 0.88)
+        colors[clr.BorderShadow] = ImVec4(0.92, 0.91, 0.88, 0.00)
+        colors[clr.FrameBg] = ImVec4(0.10, 0.09, 0.12, 1.00)
+        colors[clr.FrameBgHovered] = ImVec4(0.24, 0.23, 0.29, 1.00)
+        colors[clr.FrameBgActive] = ImVec4(0.56, 0.56, 0.58, 1.00)
+        colors[clr.TitleBg] = ImVec4(0.76, 0.31, 0.00, 1.00)
+        colors[clr.TitleBgCollapsed] = ImVec4(1.00, 0.98, 0.95, 0.75)
+        colors[clr.TitleBgActive] = ImVec4(0.80, 0.33, 0.00, 1.00)
+        colors[clr.MenuBarBg] = ImVec4(0.10, 0.09, 0.12, 1.00)
+        colors[clr.ScrollbarBg] = ImVec4(0.10, 0.09, 0.12, 1.00)
+        colors[clr.ScrollbarGrab] = ImVec4(0.80, 0.80, 0.83, 0.31)
+        colors[clr.ScrollbarGrabHovered] = ImVec4(0.56, 0.56, 0.58, 1.00)
+        colors[clr.ScrollbarGrabActive] = ImVec4(0.06, 0.05, 0.07, 1.00)
+        colors[clr.ComboBg] = ImVec4(0.19, 0.18, 0.21, 1.00)
+        colors[clr.CheckMark] = ImVec4(1.00, 0.42, 0.00, 0.53)
+        colors[clr.SliderGrab] = ImVec4(1.00, 0.42, 0.00, 0.53)
+        colors[clr.SliderGrabActive] = ImVec4(1.00, 0.42, 0.00, 1.00)
+        colors[clr.Button] = ImVec4(0.10, 0.09, 0.12, 1.00)
+        colors[clr.ButtonHovered] = ImVec4(0.24, 0.23, 0.29, 1.00)
+        colors[clr.ButtonActive] = ImVec4(0.56, 0.56, 0.58, 1.00)
+        colors[clr.Header] = ImVec4(0.10, 0.09, 0.12, 1.00)
+        colors[clr.HeaderHovered] = ImVec4(0.56, 0.56, 0.58, 1.00)
+        colors[clr.HeaderActive] = ImVec4(0.06, 0.05, 0.07, 1.00)
+        colors[clr.ResizeGrip] = ImVec4(0.00, 0.00, 0.00, 0.00)
+        colors[clr.ResizeGripHovered] = ImVec4(0.56, 0.56, 0.58, 1.00)
+        colors[clr.ResizeGripActive] = ImVec4(0.06, 0.05, 0.07, 1.00)
+        colors[clr.CloseButton] = ImVec4(0.40, 0.39, 0.38, 0.16)
+        colors[clr.CloseButtonHovered] = ImVec4(0.40, 0.39, 0.38, 0.39)
+        colors[clr.CloseButtonActive] = ImVec4(0.40, 0.39, 0.38, 1.00)
+        colors[clr.PlotLines] = ImVec4(0.40, 0.39, 0.38, 0.63)
+        colors[clr.PlotLinesHovered] = ImVec4(0.25, 1.00, 0.00, 1.00)
+        colors[clr.PlotHistogram] = ImVec4(0.40, 0.39, 0.38, 0.63)
+        colors[clr.PlotHistogramHovered] = ImVec4(0.25, 1.00, 0.00, 1.00)
+        colors[clr.TextSelectedBg] = ImVec4(0.25, 1.00, 0.00, 0.43)
+        colors[clr.ModalWindowDarkening] = ImVec4(1.00, 0.98, 0.95, 0.73)
+    elseif arg == 3 then -- purple
+        style.WindowRounding = 2.0
+        style.WindowTitleAlign = imgui.ImVec2(0.5, 0.84)
+        style.ChildWindowRounding = 2.0
+        style.FrameRounding = 2.0
+        style.ItemSpacing = imgui.ImVec2(5.0, 4.0)
+        style.ScrollbarSize = 13.0
+        style.ScrollbarRounding = 0
+        style.GrabMinSize = 8.0
+        style.GrabRounding = 1.0
+
+        colors[clr.WindowBg]              = ImVec4(0.14, 0.12, 0.16, 1.00);
+        colors[clr.ChildWindowBg]         = ImVec4(0.30, 0.20, 0.39, 0.00);
+        colors[clr.PopupBg]               = ImVec4(0.05, 0.05, 0.10, 0.90);
+        colors[clr.Border]                = ImVec4(0.89, 0.85, 0.92, 0.30);
+        colors[clr.BorderShadow]          = ImVec4(0.00, 0.00, 0.00, 0.00);
+        colors[clr.FrameBg]               = ImVec4(0.30, 0.20, 0.39, 1.00);
+        colors[clr.FrameBgHovered]        = ImVec4(0.41, 0.19, 0.63, 0.68);
+        colors[clr.FrameBgActive]         = ImVec4(0.41, 0.19, 0.63, 1.00);
+        colors[clr.TitleBg]               = ImVec4(0.41, 0.19, 0.63, 0.45);
+        colors[clr.TitleBgCollapsed]      = ImVec4(0.41, 0.19, 0.63, 0.35);
+        colors[clr.TitleBgActive]         = ImVec4(0.41, 0.19, 0.63, 0.78);
+        colors[clr.MenuBarBg]             = ImVec4(0.30, 0.20, 0.39, 0.57);
+        colors[clr.ScrollbarBg]           = ImVec4(0.30, 0.20, 0.39, 1.00);
+        colors[clr.ScrollbarGrab]         = ImVec4(0.41, 0.19, 0.63, 0.31);
+        colors[clr.ScrollbarGrabHovered]  = ImVec4(0.41, 0.19, 0.63, 0.78);
+        colors[clr.ScrollbarGrabActive]   = ImVec4(0.41, 0.19, 0.63, 1.00);
+        colors[clr.ComboBg]               = ImVec4(0.30, 0.20, 0.39, 1.00);
+        colors[clr.CheckMark]             = ImVec4(0.56, 0.61, 1.00, 1.00);
+        colors[clr.SliderGrab]            = ImVec4(0.41, 0.19, 0.63, 0.24);
+        colors[clr.SliderGrabActive]      = ImVec4(0.41, 0.19, 0.63, 1.00);
+        colors[clr.Button]                = ImVec4(0.41, 0.19, 0.63, 0.44);
+        colors[clr.ButtonHovered]         = ImVec4(0.41, 0.19, 0.63, 0.86);
+        colors[clr.ButtonActive]          = ImVec4(0.64, 0.33, 0.94, 1.00);
+        colors[clr.Header]                = ImVec4(0.41, 0.19, 0.63, 0.76);
+        colors[clr.HeaderHovered]         = ImVec4(0.41, 0.19, 0.63, 0.86);
+        colors[clr.HeaderActive]          = ImVec4(0.41, 0.19, 0.63, 1.00);
+        colors[clr.ResizeGrip]            = ImVec4(0.41, 0.19, 0.63, 0.20);
+        colors[clr.ResizeGripHovered]     = ImVec4(0.41, 0.19, 0.63, 0.78);
+        colors[clr.ResizeGripActive]      = ImVec4(0.41, 0.19, 0.63, 1.00);
+        colors[clr.CloseButton]           = ImVec4(1.00, 1.00, 1.00, 0.75);
+        colors[clr.CloseButtonHovered]    = ImVec4(0.88, 0.74, 1.00, 0.59);
+        colors[clr.CloseButtonActive]     = ImVec4(0.88, 0.85, 0.92, 1.00);
+        colors[clr.PlotLines]             = ImVec4(0.89, 0.85, 0.92, 0.63);
+        colors[clr.PlotLinesHovered]      = ImVec4(0.41, 0.19, 0.63, 1.00);
+        colors[clr.PlotHistogram]         = ImVec4(0.89, 0.85, 0.92, 0.63);
+        colors[clr.PlotHistogramHovered]  = ImVec4(0.41, 0.19, 0.63, 1.00);
+        colors[clr.TextSelectedBg]        = ImVec4(0.41, 0.19, 0.63, 0.43);
+        colors[clr.ModalWindowDarkening]  = ImVec4(0.20, 0.20, 0.20, 0.35);
+    elseif arg == 4 then -- grey
+        style.WindowRounding = 2.0
+        style.WindowTitleAlign = imgui.ImVec2(0.5, 0.84)
+        style.ChildWindowRounding = 2.0
+        style.FrameRounding = 2.0
+        style.ItemSpacing = imgui.ImVec2(5.0, 4.0)
+        style.ScrollbarSize = 13.0
+        style.ScrollbarRounding = 0
+        style.GrabMinSize = 8.0
+        style.GrabRounding = 1.0
+
+        colors[clr.Text] = ImVec4(1.00, 1.00, 1.00, 0.95)
+        colors[clr.TextDisabled] = ImVec4(0.50, 0.50, 0.50, 1.00)
+        colors[clr.WindowBg] = ImVec4(0.13, 0.12, 0.12, 1.00)
+        colors[clr.ChildWindowBg] = ImVec4(0.13, 0.12, 0.12, 1.00)
+        colors[clr.PopupBg] = ImVec4(0.05, 0.05, 0.05, 0.94)
+        colors[clr.Border] = ImVec4(0.53, 0.53, 0.53, 0.46)
+        colors[clr.BorderShadow] = ImVec4(0.00, 0.00, 0.00, 0.00)
+        colors[clr.FrameBg] = ImVec4(0.00, 0.00, 0.00, 0.85)
+        colors[clr.FrameBgHovered] = ImVec4(0.22, 0.22, 0.22, 0.40)
+        colors[clr.FrameBgActive] = ImVec4(0.16, 0.16, 0.16, 0.53)
+        colors[clr.TitleBg] = ImVec4(0.00, 0.00, 0.00, 1.00)
+        colors[clr.TitleBgActive] = ImVec4(0.00, 0.00, 0.00, 1.00)
+        colors[clr.TitleBgCollapsed] = ImVec4(0.00, 0.00, 0.00, 0.51)
+        colors[clr.MenuBarBg] = ImVec4(0.12, 0.12, 0.12, 1.00)
+        colors[clr.ScrollbarBg] = ImVec4(0.02, 0.02, 0.02, 0.53)
+        colors[clr.ScrollbarGrab] = ImVec4(0.31, 0.31, 0.31, 1.00)
+        colors[clr.ScrollbarGrabHovered] = ImVec4(0.41, 0.41, 0.41, 1.00)
+        colors[clr.ScrollbarGrabActive] = ImVec4(0.48, 0.48, 0.48, 1.00)
+        colors[clr.ComboBg] = ImVec4(0.24, 0.24, 0.24, 0.99)
+        colors[clr.CheckMark] = ImVec4(0.79, 0.79, 0.79, 1.00)
+        colors[clr.SliderGrab] = ImVec4(0.48, 0.47, 0.47, 0.91)
+        colors[clr.SliderGrabActive] = ImVec4(0.56, 0.55, 0.55, 0.62)
+        colors[clr.Button] = ImVec4(0.50, 0.50, 0.50, 0.63)
+        colors[clr.ButtonHovered] = ImVec4(0.67, 0.67, 0.68, 0.63)
+        colors[clr.ButtonActive] = ImVec4(0.26, 0.26, 0.26, 0.63)
+        colors[clr.Header] = ImVec4(0.54, 0.54, 0.54, 0.58)
+        colors[clr.HeaderHovered] = ImVec4(0.64, 0.65, 0.65, 0.80)
+        colors[clr.HeaderActive] = ImVec4(0.25, 0.25, 0.25, 0.80)
+        colors[clr.Separator] = ImVec4(0.58, 0.58, 0.58, 0.50)
+        colors[clr.SeparatorHovered] = ImVec4(0.81, 0.81, 0.81, 0.64)
+        colors[clr.SeparatorActive] = ImVec4(0.81, 0.81, 0.81, 0.64)
+        colors[clr.ResizeGrip] = ImVec4(0.87, 0.87, 0.87, 0.53)
+        colors[clr.ResizeGripHovered] = ImVec4(0.87, 0.87, 0.87, 0.74)
+        colors[clr.ResizeGripActive] = ImVec4(0.87, 0.87, 0.87, 0.74)
+        colors[clr.CloseButton] = ImVec4(0.45, 0.45, 0.45, 0.50)
+        colors[clr.CloseButtonHovered] = ImVec4(0.70, 0.70, 0.90, 0.60)
+        colors[clr.CloseButtonActive] = ImVec4(0.70, 0.70, 0.70, 1.00)
+        colors[clr.PlotLines] = ImVec4(0.68, 0.68, 0.68, 1.00)
+        colors[clr.PlotLinesHovered] = ImVec4(0.68, 0.68, 0.68, 1.00)
+        colors[clr.PlotHistogram] = ImVec4(0.90, 0.77, 0.33, 1.00)
+        colors[clr.PlotHistogramHovered] = ImVec4(0.87, 0.55, 0.08, 1.00)
+        colors[clr.TextSelectedBg] = ImVec4(0.47, 0.60, 0.76, 0.47)
+        colors[clr.ModalWindowDarkening] = ImVec4(0.88, 0.88, 0.88, 0.35)
+    elseif arg == 5 then -- dark
+        style.WindowRounding = 2.0
+        style.WindowTitleAlign = imgui.ImVec2(0.5, 0.84)
+        style.ChildWindowRounding = 2.0
+        style.FrameRounding = 2.0
+        style.ItemSpacing = imgui.ImVec2(5.0, 4.0)
+        style.ScrollbarSize = 13.0
+        style.ScrollbarRounding = 0
+        style.GrabMinSize = 8.0
+        style.GrabRounding = 1.0
+
+        colors[clr.Text] = ImVec4(0.80, 0.80, 0.83, 1.00)
+        colors[clr.TextDisabled] = ImVec4(0.24, 0.23, 0.29, 1.00)
+        colors[clr.WindowBg] = ImVec4(0.06, 0.05, 0.07, 1.00)
+        colors[clr.ChildWindowBg] = ImVec4(0.07, 0.07, 0.09, 1.00)
+        colors[clr.PopupBg] = ImVec4(0.07, 0.07, 0.09, 1.00)
+        colors[clr.Border] = ImVec4(0.80, 0.80, 0.83, 0.88)
+        colors[clr.BorderShadow] = ImVec4(0.92, 0.91, 0.88, 0.00)
+        colors[clr.FrameBg] = ImVec4(0.10, 0.09, 0.12, 1.00)
+        colors[clr.FrameBgHovered] = ImVec4(0.24, 0.23, 0.29, 1.00)
+        colors[clr.FrameBgActive] = ImVec4(0.56, 0.56, 0.58, 1.00)
+        colors[clr.TitleBg] = ImVec4(0.10, 0.09, 0.12, 1.00)
+        colors[clr.TitleBgCollapsed] = ImVec4(1.00, 0.98, 0.95, 0.75)
+        colors[clr.TitleBgActive] = ImVec4(0.07, 0.07, 0.09, 1.00)
+        colors[clr.MenuBarBg] = ImVec4(0.10, 0.09, 0.12, 1.00)
+        colors[clr.ScrollbarBg] = ImVec4(0.10, 0.09, 0.12, 1.00)
+        colors[clr.ScrollbarGrab] = ImVec4(0.80, 0.80, 0.83, 0.31)
+        colors[clr.ScrollbarGrabHovered] = ImVec4(0.56, 0.56, 0.58, 1.00)
+        colors[clr.ScrollbarGrabActive] = ImVec4(0.06, 0.05, 0.07, 1.00)
+        colors[clr.ComboBg] = ImVec4(0.19, 0.18, 0.21, 1.00)
+        colors[clr.CheckMark] = ImVec4(0.80, 0.80, 0.83, 0.31)
+        colors[clr.SliderGrab] = ImVec4(0.80, 0.80, 0.83, 0.31)
+        colors[clr.SliderGrabActive] = ImVec4(0.06, 0.05, 0.07, 1.00)
+        colors[clr.Button] = ImVec4(0.10, 0.09, 0.12, 1.00)
+        colors[clr.ButtonHovered] = ImVec4(0.24, 0.23, 0.29, 1.00)
+        colors[clr.ButtonActive] = ImVec4(0.56, 0.56, 0.58, 1.00)
+        colors[clr.Header] = ImVec4(0.10, 0.09, 0.12, 1.00)
+        colors[clr.HeaderHovered] = ImVec4(0.56, 0.56, 0.58, 1.00)
+        colors[clr.HeaderActive] = ImVec4(0.06, 0.05, 0.07, 1.00)
+        colors[clr.ResizeGrip] = ImVec4(0.00, 0.00, 0.00, 0.00)
+        colors[clr.ResizeGripHovered] = ImVec4(0.56, 0.56, 0.58, 1.00)
+        colors[clr.ResizeGripActive] = ImVec4(0.06, 0.05, 0.07, 1.00)
+        colors[clr.CloseButton] = ImVec4(0.40, 0.39, 0.38, 0.16)
+        colors[clr.CloseButtonHovered] = ImVec4(0.40, 0.39, 0.38, 0.39)
+        colors[clr.CloseButtonActive] = ImVec4(0.40, 0.39, 0.38, 1.00)
+        colors[clr.PlotLines] = ImVec4(0.40, 0.39, 0.38, 0.63)
+        colors[clr.PlotLinesHovered] = ImVec4(0.25, 1.00, 0.00, 1.00)
+        colors[clr.PlotHistogram] = ImVec4(0.40, 0.39, 0.38, 0.63)
+        colors[clr.PlotHistogramHovered] = ImVec4(0.25, 1.00, 0.00, 1.00)
+        colors[clr.TextSelectedBg] = ImVec4(0.25, 1.00, 0.00, 0.43)
+        colors[clr.ModalWindowDarkening] = ImVec4(1.00, 0.98, 0.95, 0.73)
+    end
 end
