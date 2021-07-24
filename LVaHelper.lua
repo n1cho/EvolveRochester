@@ -2210,8 +2210,8 @@ function checkDirectory(arg)
             end
         end
         f:close()
+        os.remove(pathupd)
     end
-    os.remove(pathupd)
 
     if restart then
         thisScript():reload()
