@@ -1413,21 +1413,21 @@ function imgui.OnDrawFrame()
         imgui.SetNextWindowPos(imgui.ImVec2(sw/2,sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
         imgui.Begin(u8'Обновление',uws)
 
-        imgui.CenterText(u8(string.format('Доступно обновление до версии %s.',updateIni.lvahelper.latest)))
-        imgui.CenterText(u8('Изменения: '..updateIni.lvahelper.changes))
+        imgui.CenterText(u8(string.format('Доступно обновление до версии %s.',updateVersion)))
+        imgui.CenterText(u8('Изменения: '..updateChange))
         imgui.CenterText(u8'Обновить сейчас?')
 
         if imgui.Button(u8'Да',imgui.ImVec2(175,25)) then 
             uws.v = false 
             sampAddChatMessage(sname..'Началось обновление скрипта',-1)
-            link = updateIni.lvahelper.updateurl
-            os.remove(pathupd)
             path = getWorkingDirectory()..'\\LVaHelper.lua'
             downloadUrlToFile(link, path, download_handler)
         end
         imgui.SameLine()
-        if imgui.Button(u8'Нет',imgui.ImVec2(175,25)) then print('Обновление отклонено') os.remove(pathupd) uws.v = false end
+        if imgui.Button(u8'Нет',imgui.ImVec2(175,25)) then print('Обновление отклонено') uws.v = false end
  
+        if doesFileExist(pathupd) then os.remove(pathupd) end
+
         imgui.End()
     end
 
@@ -2209,13 +2209,23 @@ function auto_update()
     pathupd = getWorkingDirectory()..'\\update.ini'
     linkupd = 'https://raw.githubusercontent.com/n1cho/EvolveRochester/main/update.ini'
     downloadUrlToFile(linkupd, pathupd, download_handler)
-    if doesFileExist(pathupd) then
-        updateIni = inicfg.load(nil,pathupd)
-        if updateIni.lvahelper.latest ~= thisScript().version then
-            uws.v = true
-            if not imgui.Process then imgui.Process = uws.v end
+    lua_thread.create(function()
+        wait(300)
+        if doesFileExist(pathupd) then
+            updateIni = inicfg.load(nil,pathupd)
+            updateVersion = updateIni.lvahelper.latest
+            updateChange = updateIni.lvahelper.changes
+            link = updateIni.lvahelper.updateurl
+            if updateVersion then
+                if updateVersion ~= thisScript().version then
+                    uws.v = true
+                    if not imgui.Process then imgui.Process = uws.v end
+                end
+            end
+            os.remove(pathupd)
         end
-    end
+    end)
+    os.remove(pathupd)
 end
 
 -------------------------------------
