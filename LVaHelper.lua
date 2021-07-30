@@ -1,9 +1,8 @@
 -- This script create for Las Venturas Army Evolve Role Play 02
 -- Script author Nicho. Contacts - https://vk.com/n1chooff
--- version 0.8
 
 script_name("LVa Helper")
-script_version('0.7')
+script_version('0.82')
 
 local sname = '{51964D}[LVa Helper]:{ffffff} '
 -------- trash -------
@@ -26,7 +25,7 @@ local CarsName = {"Landstalker", "Bravura", "Buffalo", "Linerunner", "Perrenial"
 
 local DopBind = {'{MyId} - ваш ID','{MyName} - ваш ник с "_"','{MyNameR} - ваш ник без "_"','{TarName} - ник цели(Target)','{TarNameR} - ник цели(Target) без "_"','{TarID} - ID цели(Target)',
     '{CarName} - название машины','{CarHealt} - состояние машины','{PassegerName} - Ник(-и) пасажиров без "_"',"{PassegerID} - ID(-ы) ваших пасажиров",
-    '{KV} - пишет ваш квадрат','{MyTeg} - ваш тег в рацию','{MyRang} - ваш ранг','{NowDate} - возвращает время в формате H:M:S'}
+    '{KV} - пишет ваш квадрат','{MyTeg} - ваш тег в рацию','{MyRang} - ваш ранг','{NowDate} - возвращает время в формате H:M:S','{MyFraction} - пишет вашу фракцию'}
 local DopText = ""
 
 for _, str in ipairs(DopBind) do
@@ -301,14 +300,16 @@ function imgui.OnDrawFrame()
     -- target ---
     local valid, ped = getCharPlayerIsTargeting(PLAYER_HANDLE)
     -------------
+    ip, port = sampGetCurrentServerAddress()
 
-    dcf = getWorkingDirectory()..'\\cfg\\'..MyName..'\\config.ini'
+
+    dcf = getWorkingDirectory().."\\LVaHelper\\"..MyName..'\\'..ip..'\\config.ini'
     mainIni = inicfg.load(nil,dcf)
 
-    dci = getWorkingDirectory()..'\\cfg\\'..MyName..'\\infbar.ini'
+    dci = getWorkingDirectory().."\\LVaHelper\\"..MyName..'\\'..ip..'\\infbar.ini'
     infIni = inicfg.load(nil,dci)
 
-    dcb = getWorkingDirectory()..'\\cfg\\'..MyName..'\\binder.ini'
+    dcb = getWorkingDirectory().."\\LVaHelper\\"..MyName..'\\'..ip..'\\binder.ini'
     binderIni = inicfg.load(nil,dcb)
 
 
@@ -372,7 +373,7 @@ function imgui.OnDrawFrame()
         
         imgui.ShowCursor = true
 
-        imgui.SetNextWindowSize(imgui.ImVec2(300, 200), imgui.Cond.FirstUseEver) -- resoluthion window
+        imgui.SetNextWindowSize(imgui.ImVec2(300, 215), imgui.Cond.FirstUseEver) -- resoluthion window
         imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5)) -- in center monitor
         imgui.Begin(u8'Главное меню',mws,imgui.WindowFlags.NoResize)
         
@@ -393,6 +394,8 @@ function imgui.OnDrawFrame()
         if imgui.Button(u8'Функции Скрипта',btn_size) then aws.v = not aws.v end
 
         if imgui.Button(u8'Отключить скрипт',btn_size) then thisScript():unload() end
+
+        imgui.Text(u8'Версия: '..thisScript().version)
 
         imgui.End()
     end
@@ -1400,6 +1403,13 @@ function imgui.OnDrawFrame()
         imgui.TextColoredRGB(u8'{51964D}/post{SSSSSS} (start/stop) - начать счетчик активности на посту')
         imgui.TextColoredRGB(u8'{51964D}/logdep{SSSSSS} - посмотреть последние 25 сообщений в департамент')
         imgui.TextColoredRGB(u8'{51964D}/logsms{SSSSSS} - посмотреть последние 25 сообщений в SMS')
+        imgui.TextColoredRGB(u8'{51964D}/findkv{SSSSSS} - поставить метку на нужный квадрат')
+        imgui.TextColoredRGB(u8'{51964D}@(id){SSSSSS} - вывести нон-рп ник игрока(на свой id не работает)')
+        imgui.TextColoredRGB(u8'{51964D}#(id){SSSSSS} - вывести рп ник игрока(на свой id не работает)')
+
+        imgui.SameLine(600)
+
+        imgui.Text('vycheslav kot lox') -- остылочка
 
 
         imgui.End()
@@ -1409,7 +1419,7 @@ function imgui.OnDrawFrame()
 
         imgui.ShowCursor = true
 
-        imgui.SetNextWindowSize(imgui.ImVec2(370, 130), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowSize(imgui.ImVec2(430, 130), imgui.Cond.FirstUseEver)
         imgui.SetNextWindowPos(imgui.ImVec2(sw/2,sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
         imgui.Begin(u8'Обновление',uws)
 
@@ -1417,14 +1427,14 @@ function imgui.OnDrawFrame()
         imgui.CenterText(u8('Изменения: '..updateChange))
         imgui.CenterText(u8'Обновить сейчас?')
 
-        if imgui.Button(u8'Да',imgui.ImVec2(175,25)) then 
+        if imgui.Button(u8'Да',imgui.ImVec2(215,25)) then 
             uws.v = false 
             sampAddChatMessage(sname..'Началось обновление скрипта',-1)
-            path = getWorkingDirectory()..'\\LVaHelper.lua'
+            path = getWorkingDirectory()..'\\LVaHelper.luac'
             downloadUrlToFile(link, path, download_handler)
         end
         imgui.SameLine()
-        if imgui.Button(u8'Нет',imgui.ImVec2(175,25)) then print('Обновление отклонено') uws.v = false end
+        if imgui.Button(u8'Нет',imgui.ImVec2(215,25)) then print('Обновление отклонено') uws.v = false end
  
         if doesFileExist(pathupd) then os.remove(pathupd) end
 
@@ -1444,7 +1454,10 @@ function main()
     local _,MyId = sampGetPlayerIdByCharHandle(PLAYER_PED)
     local MyName = sampGetPlayerNickname(MyId)
 
-    mainDirectory = getWorkingDirectory()..'\\cfg\\'..MyName
+    ip, port = sampGetCurrentServerAddress()
+
+
+    mainDirectory = getWorkingDirectory()..'\\LVaHelper\\'..MyName..'\\'..ip
 
     dcf = mainDirectory..'\\config.ini'
     mainIni = inicfg.load(nil,dcf)
@@ -1519,22 +1532,22 @@ function main()
 
     
     if doesFileExist(dcf) then
-        if mainIni.settings then
-            if mainIni.settings.autoTeg then
-                sampRegisterChatCommand('r',cmd_f) 
-            else
-                sampUnregisterChatCommand('r')
-            end
+        if mainIni.settings.autoTeg then
+            sampRegisterChatCommand('r',cmd_f) 
+        else
+            sampUnregisterChatCommand('r')
         end
+
+        if mainIni.config.infbr then
+            imgui.Process = true
+            imgui.ShowCursor = false
+        end
+
     else
         checkDirectory(MyName)
     end
 
 
-    if mainIni.config.infbr then
-        imgui.Process = true
-        imgui.ShowCursor = false
-    end
 
     lua_thread.create(time)
 
@@ -1550,7 +1563,6 @@ function main()
 
 
         if doesFileExist(dcf) then
-            mainIni = inicfg.load(nil,dcf)
             if mainIni.settings.chatT then
                 if isKeyJustPressed(key.VK_T) then
                     if not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive()  then
@@ -1558,12 +1570,11 @@ function main()
                     end
                 end
             end
+            if (mainIni.config.infbr and patrul) or mainIni.config.infbr or patrul then
+                imgui.ShowCursor = false
+            end
         end
 
-
-        if (mainIni.config.infbr and patrul) or mainIni.config.infbr or patrul then
-            imgui.ShowCursor = false
-        end
 
         if patrul then
             if z then
@@ -1923,13 +1934,51 @@ function sampev.onSendCommand(command)
                                 text = string.gsub(text,'{'..word..'}',modBinder[word])
                             end
                         end
-                        sampAddChatMessage(text,-1)
+                        sampSendChat(text,-1)
                         wait(binderIni[i].wait)
                     end
                 end)
             end
         end
     end
+    text = dogid(command)
+    if text ~= command then
+        return { text }
+    end
+end
+
+
+function sampev.onSendChat(message)
+    text = dogid(message)
+    if text ~= message then
+        return { text }
+    end
+end
+
+function dogid(text)
+    while true do
+        if text:find("@%d+") then
+            id = text:match("@(%d+)")
+            if id ~= nil and sampIsPlayerConnected(id) then
+                text = text:gsub("@"..id, sampGetPlayerNickname(id))
+            else
+                text = text:gsub("@"..id, id)
+            end
+        else break end
+    end
+      -------------
+    while true do
+        if text:find("#%d+") then
+            id = text:match("#(%d+)")
+            myid=sampGetPlayerIdByCharHandle(PLAYER_PED)
+            if id ~= nil and sampIsPlayerConnected(id) and id ~= myid then
+                text = text:gsub("#"..id, sampGetPlayerNickname(id):gsub('_', ' '))
+            else
+                text = text:gsub("#"..id, id)
+            end
+        else break end
+    end
+    return text
 end
 
 
@@ -1938,10 +1987,12 @@ function sampev.onServerMessage(color, text)
     local _,MyId = sampGetPlayerIdByCharHandle(PLAYER_PED)
     local MyName = sampGetPlayerNickname(MyId)
 
-    dcf = getWorkingDirectory()..'\\cfg\\'..MyName..'\\config.ini'
+    ip, port = sampGetCurrentServerAddress()
+
+    dcf = getWorkingDirectory().."\\LVaHelper\\"..MyName..'\\'..ip..'\\config.ini'
     mainIni = inicfg.load(nil,dcf)
 
-    dcp = getWorkingDirectory()..'\\cfg\\'..MyName..'\\post.ini'
+    dcp = getWorkingDirectory().."\\LVaHelper\\"..MyName..'\\'..ip..'\\post.ini'
     postIni = inicfg.load(nil,dcp)
 
     if text:find('PASSPORT') then
@@ -1951,14 +2002,16 @@ function sampev.onServerMessage(color, text)
         inicfg.save(postIni,dcp) 
     end
 
-    if mainIni.config.metka then
-        if (text:find('SOS') or text:find('sos') or text:find('СОС') or text:find('сос') ) and text:match("(%A)-(%d+)") and not text:find(MyName) then
-            kvx,kvy = text:match("(%A)-(%d+)")
-            cmd_findkv(kvx..'-'..kvy)
-        end
-    end
 
     if doesFileExist(dcf) then
+
+        if mainIni.config.metka then
+            if (text:find('SOS') or text:find('sos') or text:find('СОС') or text:find('сос') ) and text:match("(%A)-(%d+)") and not text:find(MyName) then
+                kvx,kvy = text:match("(%A)-(%d+)")
+                cmd_findkv(kvx..'-'..kvy)
+            end
+        end
+
         if text:find('Рабочий день начат') then
             if mainIni.settings.autoClist then
                 lua_thread.create(function()
@@ -2028,28 +2081,30 @@ function sampev.onServerMessage(color, text)
 end
 -------
 function onWindowMessage(msg, wparam, lparam)
-    if msg == 0x100 or msg == 0x101 then
-        if (wparam == key.VK_ESCAPE and (mws.v or sws.v or bws.v or dws.v)) and not isPauseMenuActive() then
-            consumeWindowMessage(true, false)
-            if msg == 0x101 then
-                if sws.v then
-                    if imwin == 1 or imwin == 2 then
-                        imwin = 0
+    if imgui.Process then
+        if msg == 0x100 or msg == 0x101 then
+            if (wparam == key.VK_ESCAPE and (mws.v or sws.v or bws.v or dws.v)) and not isPauseMenuActive() then
+                consumeWindowMessage(true, false)
+                if msg == 0x101 then
+                    if sws.v then
+                        if imwin == 1 or imwin == 2 then
+                            imwin = 0
+                        else
+                            sws.v = false
+                        end
+                    elseif bws.v then
+                        if changeBind then
+                            changeBind = nil
+                        else
+                            bws.v = false
+                        end
+                    elseif ows.v then ows.v = false
+                    elseif fws.v then fws.v = false
+                    elseif pws.v then pws.v = false
+                    elseif aws.v then aws.v = false
                     else
-                        sws.v = false
+                        mws.v = false
                     end
-                elseif bws.v then
-                    if changeBind then
-                        changeBind = nil
-                    else
-                        bws.v = false
-                    end
-                elseif ows.v then ows.v = false
-                elseif fws.v then fws.v = false
-                elseif pws.v then pws.v = false
-                elseif aws.v then aws.v = false
-                else
-                    mws.v = false
                 end
             end
         end
@@ -2126,17 +2181,17 @@ function ModerBinder()
     modBinder = {['MyId']=MyId,['MyName']=MyName,['MyNameR'] = MyName:gsub('_',' '),['TarName'] = TargetNick,
     ['TarNameR'] = TargetNick:gsub('_',' '),['TarID'] = tid,['CarName']=CarName,['CarHealth'] = CarHealth,['PassegerName'] = PassegerName,
     ['PassegerID'] = PassegerID,['KV']=kvadrat(),['MyTeg']=mainIni.config.rteg,['MyRang']=mainIni.config.rangName,
-    ['NowDate'] = NowDate}
+    ['NowDate'] = NowDate,['MyFraction']=mainIni.config.fraction}
     return modBinder
 end
 
 function checkDirectory(arg)
-    local directFolder = getWorkingDirectory().."\\cfg\\"..arg
+    ip, port = sampGetCurrentServerAddress()
+    directFolder = string.format(getWorkingDirectory().."\\LVaHelper\\%s\\%s\\",arg,ip)
     if doesDirectoryExist(directFolder) then
         print('Найден пункт конфигурации')
     else
-        crfld = createDirectory(directFolder)
-        if crfld then
+        if createDirectory(directFolder) then
             print('Папка аккаунта успешно создана.')
         else
             print('Во время создание папки аккаунта произошла ошибка')
@@ -2210,14 +2265,14 @@ function auto_update()
     linkupd = 'https://raw.githubusercontent.com/n1cho/EvolveRochester/main/update.ini'
     downloadUrlToFile(linkupd, pathupd, download_handler)
     lua_thread.create(function()
-        wait(300)
+        wait(500)
         if doesFileExist(pathupd) then
             updateIni = inicfg.load(nil,pathupd)
             updateVersion = updateIni.lvahelper.latest
             updateChange = updateIni.lvahelper.changes
             link = updateIni.lvahelper.updateurl
             if updateVersion then
-                if updateVersion ~= thisScript().version then
+                if tonumber(updateVersion) ~= tonumber(thisScript().version) then
                     uws.v = true
                     if not imgui.Process then imgui.Process = uws.v end
                 end
