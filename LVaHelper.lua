@@ -2,7 +2,7 @@
 -- Script author Nicho. Contacts - https://vk.com/n1chooff
 
 script_name("LVa Helper")
-script_version('0.82')
+script_version('0.85')
 
 local sname = '{51964D}[LVa Helper]:{ffffff} '
 -------- trash -------
@@ -25,7 +25,8 @@ local CarsName = {"Landstalker", "Bravura", "Buffalo", "Linerunner", "Perrenial"
 
 local DopBind = {'{MyId} - ваш ID','{MyName} - ваш ник с "_"','{MyNameR} - ваш ник без "_"','{TarName} - ник цели(Target)','{TarNameR} - ник цели(Target) без "_"','{TarID} - ID цели(Target)',
     '{CarName} - название машины','{CarHealt} - состояние машины','{PassegerName} - Ник(-и) пасажиров без "_"',"{PassegerID} - ID(-ы) ваших пасажиров",
-    '{KV} - пишет ваш квадрат','{MyTeg} - ваш тег в рацию','{MyRang} - ваш ранг','{NowDate} - возвращает время в формате H:M:S','{MyFraction} - пишет вашу фракцию'}
+    '{KV} - пишет ваш квадрат','{MyTeg} - ваш тег в рацию','{MyRang} - ваш ранг','{NowDate} - возвращает время в формате H:M:S','{MyFraction} - пишет вашу фракцию',
+    '{StorageFrac} - название фракции где разгрузили материалы','{FullStorage} - максимально возможный склад фракции','{StatusStorage} - состояние склада, где была разгрузка'}
 local DopText = ""
 
 for _, str in ipairs(DopBind) do
@@ -42,7 +43,6 @@ local sampev = require 'lib.samp.events'
 local imgui = require "imgui"
 local inicfg = require "inicfg"
 local key = require "vkeys"
-local imadd = require 'imgui_addons'
 local weapons = require 'game.weapons'
 local memory = require "memory"
 local dlstatus = require('moonloader').download_status
@@ -60,7 +60,6 @@ local autoBP = 1
 local line_binder = 50
 local changeBind = nil
 local levelBinder = {}
-local pric = ''
 local modBinder = {}
 local tid = nil
 local startTime = nil
@@ -79,11 +78,15 @@ local timesDoklad = 0
 local checkPass = 0
 local sessionDoklad = 0
 local sessionPass = 0
-local testLocal = 0
 local MaskOn=false
+local MaskID = {19038,19037,19036,18919,18912,18913,18914,18915,18916,18917,18918,18911,18920}
+local fastmask = false
+local findmask = false
+local showchek = false
+local SkladFrac = nil
+local FullSklad = 0
+local StatusSklad = 0
 ----- hot key ------
-local rkeys = require 'rkeys'
-imgui.HotKey = require('imgui_addons').HotKey
 
 local tLastKeys = {}
 
@@ -99,7 +102,9 @@ local newIni = {
         modMembers=false,
         rangName = nil,
         sex = 0,
-        fraction = nil
+        fraction = nil,
+        engine = false,
+        pass = ''
     },
     settings = {
         autoTeg = false,
@@ -118,6 +123,9 @@ local newIni = {
 		armour = false,
 		spec = false,
         close = false
+    },
+    binds={
+        FastMask='{}'
     }
 }
 local newInf = {
@@ -160,18 +168,28 @@ local newBind = {
         names1 = 'Паспорт',
         ['1x1'] = '/showpass {TarID}',
         names2 = 'Лицензии',
-        ['1x2'] = '/showlicenses {TarID}'
+        ['1x2'] = '/showlicenses {TarID}',
+        wait1=1000,
+        wait2=1000
     },
     f3 = {
         name = 'Запросить',
         names1 = 'Местоположение',
-        ['1x1'] = '/r {MyTag} {TarName} ваше местонахождение. На ответ 30 секунд',
+        ['1x1'] = '/r {MyTeg} {TarName} ваше местонахождение. На ответ 30 секунд',
         names2 = 'Документы',
-        ['1x2'] = 'Здравия желаю, я {MyRang} {MyNameR}.Предъявите ваши документы'
+        ['1x2'] = 'Здравия желаю, я {MyRang} {MyNameR}.Предъявите ваши документы',
+        wait1=1000,
+        wait2=1000
     },
     fset = {
         style = 0,
         act = '[90]'
+    },
+    b2 = {
+        [1] ='/r {MyTeg} Разгрузился на складе {StorageFrac}. Состояние: {StatusStorage}/{FullStorage}.',
+        wait=1000,
+        name='Доклад Поставки',
+        act='[18,78]'
     }
 }
 local newOnl = {
@@ -271,20 +289,22 @@ local fws = imgui.ImBool(false) -- fast-menu redact window state
 local pws = imgui.ImBool(false) -- post window state
 local aws = imgui.ImBool(false) -- about script window state
 local uws = imgui.ImBool(false) -- update window state
+local lws = imgui.ImBool(false) -- lectures
+local shpws = imgui.ImBool(false) -- shpora window state
 
 
 local FastMenuEdit1 = imgui.ImInt(0)
+local ShporaMenu = imgui.ImInt(0)
 
 local success = imgui.ImBool(false)
 --------------
-local sw,sh = getScreenResolution()
-
-
-
+sw,sh = getScreenResolution()
 function imgui.OnDrawFrame()
+    sw,sh = getScreenResolution()
+
     infbr = imgui.ImBool(mainIni.config.infbr) 
 
-    if not mws.v and not sws.v and not infbr.v and not bws.v and not fastmenu and not dws.v and not ows.v and not fws.v and not pws.v and not patrul and not aws.v and not uws.v then
+    if not mws.v and not sws.v and not infbr.v and not shpws.v and not lws.v and not bws.v and not fastmenu and not dws.v and not ows.v and not fws.v and not pws.v and not patrul and not aws.v and not uws.v then
         imgui.Process = false
     end
 
@@ -337,7 +357,6 @@ function imgui.OnDrawFrame()
     ----------------------
     --- buffer ---
     local inputRteg = imgui.ImBuffer(tostring(u8(mainIni.config.rteg)),32)
-    local inputPrichina = imgui.ImBuffer(u8(pric),256)
     ------ check box -----
     
     local useAutoTeg = imgui.ImBool(mainIni.settings.autoTeg)
@@ -347,6 +366,7 @@ function imgui.OnDrawFrame()
     local useModMembers = imgui.ImBool(mainIni.config.modMembers)
     local useInfBr = imgui.ImBool(mainIni.config.infbr)
     local useMetka = imgui.ImBool(mainIni.settings.metka)
+    local AutoEngine = imgui.ImBool(mainIni.config.engine)
 
     local numClist = imgui.ImInt(mainIni.config.acls)
     local fastStyle = imgui.ImInt(binderIni.fset.style)
@@ -373,7 +393,7 @@ function imgui.OnDrawFrame()
         
         imgui.ShowCursor = true
 
-        imgui.SetNextWindowSize(imgui.ImVec2(300, 215), imgui.Cond.FirstUseEver) -- resoluthion window
+        imgui.SetNextWindowSize(imgui.ImVec2(300, 240), imgui.Cond.FirstUseEver) -- resoluthion window
         imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5)) -- in center monitor
         imgui.Begin(u8'Главное меню',mws,imgui.WindowFlags.NoResize)
         
@@ -387,11 +407,13 @@ function imgui.OnDrawFrame()
 
         if imgui.Button(u8'Онлайн',btn_size) then ows.v = not ows.v end
 
+        if imgui.Button(u8'Лекции',btn_size) then lws.v = not lws.v end
+
         if imgui.Button('Fast Menu',btn_size) then fws.v = not fws.v end
 
         if imgui.Button(u8'Посты',btn_size) then pws.v = not pws.v end
 
-        if imgui.Button(u8'Функции Скрипта',btn_size) then aws.v = not aws.v end
+        if imgui.Button(u8'О скрипте',btn_size) then aws.v = not aws.v end
 
         if imgui.Button(u8'Отключить скрипт',btn_size) then thisScript():unload() end
 
@@ -402,15 +424,16 @@ function imgui.OnDrawFrame()
 
     if sws.v then
         
-        imgui.SetNextWindowSize(imgui.ImVec2(550, 250), imgui.Cond.FirstUseEver) -- resoluthion window
+        imgui.SetNextWindowSize(imgui.ImVec2(600, 330), imgui.Cond.FirstUseEver) -- resoluthion window
         imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
         imgui.Begin(u8'Настройки',sws,imgui.WindowFlags.NoResize + imgui.WindowFlags.ShowBorders)
 
-        imgui.BeginChild('Основные',imgui.ImVec2(80,215),true)
+        imgui.BeginChild('Основные',imgui.ImVec2(80,294),true)
 
             if imgui.Selectable(u8'Основные') then imwin = 0 end
             if imgui.Selectable(u8'Инфо-Бар') then imwin = 1 end
             if imgui.Selectable(u8'Авто-БП') then imwin = 2 end
+            if imgui.Selectable(u8'Биндер') then imwin = 4 end
             if imgui.Selectable(u8'Цвет') then imwin = 3 end
 
         imgui.EndChild()
@@ -436,7 +459,11 @@ function imgui.OnDrawFrame()
 
                 if imgui.Checkbox(u8'Использовать Авто-тег',useAutoTeg) then mainIni.settings.autoTeg = useAutoTeg.v end
 
-                if mainIni.settings.autoTeg then if imgui.InputText(u8'Введите ваш тег',inputRteg) then mainIni.config.rteg = u8:decode(inputRteg.v) end end
+                if mainIni.settings.autoTeg then
+                    if imgui.InputText(u8'Введите ваш тег',inputRteg) then 
+                        mainIni.config.rteg = u8:decode(inputRteg.v) 
+                    end 
+                end
 
                 if imgui.Checkbox(u8'Ставить метку на сигнал СОС',useMetka) then mainIni.settings.metka = useMetka.v end
 
@@ -448,7 +475,7 @@ function imgui.OnDrawFrame()
                     inicfg.save(mainIni,dcf)
                 end
 
-                imgui.Separator()
+                if imgui.Checkbox(u8'Автоматически заводить машину',AutoEngine) then mainIni.config.engine = AutoEngine.v end
 
                 inicfg.save(mainIni,dcf)
             elseif imwin == 1 then
@@ -637,6 +664,14 @@ function imgui.OnDrawFrame()
                 if imgui.RadioButton(u8'Серый',StyleScript,4) then mainIni.settings.style = StyleScript.v end
                 if imgui.RadioButton(u8'Черная',StyleScript,5) then mainIni.settings.style = StyleScript.v end
                 inicfg.save(mainIni,dcf)
+            elseif imwin == 4 then
+                imgui.Text(u8'Авто-Маска')
+                imgui.SameLine()
+                if imgui.HotKey("##7", ActiveFastMask, tLastKeys, 50) then
+                    rkeys.changeHotKey(ActiveFmask, ActiveFastMask.v)
+                    mainIni.binds.FastMask = encodeJson(ActiveFastMask.v)
+                end
+                inicfg.save(mainIni,dcf)
             end
         imgui.EndChild()
         imgui.End()
@@ -715,9 +750,11 @@ function imgui.OnDrawFrame()
 
         imgui.ShowCursor = true
 
-        imgui.SetNextWindowSize(imgui.ImVec2(780, 335), imgui.Cond.FirstUseEver) -- resoluthion window
+        imgui.SetNextWindowSize(imgui.ImVec2(780, 350), imgui.Cond.FirstUseEver) -- resoluthion window
         imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5)) -- in center monitor
         imgui.Begin(u8'Биндер',bws,imgui.WindowFlags.NoResize)
+        if imwin == 32 then imgui.CenterText(u8'Командный биндер') end
+        if imwin == 33 then imgui.CenterText(u8'Кнопочный биндер') end
         imgui.BeginChild('Редактирование',imgui.ImVec2(640,280),true)
         i = 0
         if changeBind then
@@ -728,7 +765,7 @@ function imgui.OnDrawFrame()
                     levelBinder[3] = imgui.ImBuffer(u8(binderIni[changeBind].wait),16) -- пауза
                     levelBinder[4] = imgui.ImBuffer(1024) -- редактор
                 
-                    for g = 1, 30 do
+                    for g = 1, #binderIni[changeBind] do
                         if binderIni[changeBind][g] == nil then
                             break
                         else
@@ -751,7 +788,7 @@ function imgui.OnDrawFrame()
                     levelBinder[3] = imgui.ImBuffer(u8(binderIni['b'..changeBind].wait),16) -- пауза
                     levelBinder[4] = imgui.ImBuffer(1024) -- редактор
                 
-                    for g = 1, 30 do
+                    for g = 1, #binderIni['b'..changeBind] do
                         if binderIni['b'..changeBind][g] == nil then
                             break
                         else
@@ -815,7 +852,7 @@ function imgui.OnDrawFrame()
             imgui.InputTextMultiline('##2', levelBinder[4], imgui.ImVec2(640, 178))
 
             if imwin == 32 then
-                for b = 1, 30 do
+                for b = 1, 50 do
                     if binderIni[changeBind] ~= nil then
                         if binderIni[changeBind][b] ~= nil then
                             binderIni[changeBind][b] = nil
@@ -827,7 +864,7 @@ function imgui.OnDrawFrame()
                     end
                 end
             elseif imwin == 33 then
-                for b = 1, 30 do
+                for b = 1, 50 do
                     if binderIni['b'..changeBind] ~= nil then
                         if binderIni['b'..changeBind][b] ~= nil then
                             binderIni['b'..changeBind][b] = nil
@@ -936,7 +973,7 @@ function imgui.OnDrawFrame()
             end
         imgui.EndChild()
 
-        imgui.SetCursorPosX(330)
+        imgui.SetCursorPosX(340)
         if imwin == 32 then if imgui.Button(u8'Кнопочный биндер') then imwin = 33 changeBind = nil end end
         if imwin == 33 then if imgui.Button(u8'Командный биндер') then imwin = 32 changeBind = nil end end
 
@@ -946,7 +983,7 @@ function imgui.OnDrawFrame()
 
     if (dws.v and bws.v) or (dws.v and fws.v) then
         imgui.SetNextWindowPos(imgui.ImVec2((sw/2 + 385),(sh/2)-100),imgui.ImVec2(0.5,0.5))
-        imgui.SetNextWindowSize(imgui.ImVec2(300, 250), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowSize(imgui.ImVec2(300, 265), imgui.Cond.FirstUseEver)
         imgui.Begin('dop',_,imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar)
         if bws.v or dws.v then
             imgui.Text(u8(DopText))
@@ -956,11 +993,17 @@ function imgui.OnDrawFrame()
         imgui.End()
     end
 
-
+    
     if fastmenu then
         
+        imgui.ShowCursor = false
         imgui.SetNextWindowPos(imgui.ImVec2(sw/2,sh/2))
-        imgui.OpenPopup('PieMenu')
+        imgui.SetNextWindowSize(imgui.ImVec2(-1,-1))
+        imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.06, 0.05, 0.07, 0)) 
+        imgui.Begin('fastsat',_,imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar)
+        if not imgui.IsWindowHovered() and fastmenu then
+            imgui.OpenPopup('PieMenu')
+          end
         if binderIni.fset.style == 0 then
             if pie.BeginPiePopup('PieMenu') then
                 imgui.ShowCursor = true
@@ -995,13 +1038,13 @@ function imgui.OnDrawFrame()
                         end
                     end
                 end
-                if pie.PieMenuItem(u8'Отмена') then fastmenu = false end
+                if pie.PieMenuItem(u8'Отмена') then fastmenu = not fastmenu end
                 pie.EndPiePopup()
             end
         else
             if imgui.BeginPopup('PieMenu') then
                 imgui.ShowCursor = true
-                imgui.TextColoredRGB(string.format(u8'Цель: {%s}%s{SSSSSS}. ID[%s]',tcolor,TargetNick,tid))
+                imgui.TextColoredRGB(string.format(u8'Цель: {%s}%s{SSSSSS}. ID[%s]',tcolor,sampGetPlayerNickname(tid),tid))
                 for i=0,10 do
                     if binderIni['f'..i] then
                         if binderIni['f'..i].name then
@@ -1036,6 +1079,8 @@ function imgui.OnDrawFrame()
                 imgui.EndPopup()
             end
         end
+        imgui.End()
+        imgui.PopStyleColor()
     end
 
     if ows.v then
@@ -1385,16 +1430,15 @@ function imgui.OnDrawFrame()
         imgui.Text(u8'Время на посту: '..get_clock(timePatrule)..' AFK: '..get_clock(afkPatrule))
         imgui.Text(u8'Количество докладов: '..timesDoklad)
         imgui.Text(u8'Проверено паспортов: '..checkPass)
-        imgui.Text(tostring(timeDoklad))
         imgui.End()
         imgui.PopStyleVar()
         imgui.PopStyleColor()
     end
 
     if aws.v then
-        imgui.SetNextWindowSize(imgui.ImVec2(400, 200), imgui.Cond.FirstUseEver) 
+        imgui.SetNextWindowSize(imgui.ImVec2(600, 320), imgui.Cond.FirstUseEver) 
         imgui.SetNextWindowPos(imgui.ImVec2((sw/2),sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
-        imgui.Begin(u8'Функции Скрипта',aws)
+        imgui.Begin(u8'О скрипте',aws)
         
         imgui.CenterText(u8'Команды скрипта')
 
@@ -1404,13 +1448,14 @@ function imgui.OnDrawFrame()
         imgui.TextColoredRGB(u8'{51964D}/logdep{SSSSSS} - посмотреть последние 25 сообщений в департамент')
         imgui.TextColoredRGB(u8'{51964D}/logsms{SSSSSS} - посмотреть последние 25 сообщений в SMS')
         imgui.TextColoredRGB(u8'{51964D}/findkv{SSSSSS} - поставить метку на нужный квадрат')
+        imgui.TextColoredRGB(u8'{51964D}/fmask{SSSSSS} - автоматически надеваем первую найденую маску в инвентаре')
         imgui.TextColoredRGB(u8'{51964D}@(id){SSSSSS} - вывести нон-рп ник игрока(на свой id не работает)')
         imgui.TextColoredRGB(u8'{51964D}#(id){SSSSSS} - вывести рп ник игрока(на свой id не работает)')
-
-        imgui.SameLine(600)
-
-        imgui.Text('vycheslav kot lox') -- остылочка
-
+        imgui.TextColoredRGB(u8'{51964D}/shpora{SSSSSS} - посмотреть шпаргалки(шпаргалки хранятся по пути:')
+        imgui.TextColoredRGB(u8(getWorkingDirectory().."\\LVaHelper\\"..MyName..'\\'..ip..'\\documents\\reads'))
+        imgui.CenterText(u8'Автор скрипта')
+        imgui.TextColoredRGB(u8'Автор скрипта - {51964D}Arthur Nicho{SSSSSS}. Все предложение по улучшению,ненависть,')
+        imgui.Text(u8'сообщение о том что скрипт "дерьмо", писать в - https://vk.com/n1chooff')
 
         imgui.End()
     end
@@ -1419,7 +1464,7 @@ function imgui.OnDrawFrame()
 
         imgui.ShowCursor = true
 
-        imgui.SetNextWindowSize(imgui.ImVec2(430, 130), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowSize(imgui.ImVec2(690, 120), imgui.Cond.FirstUseEver)
         imgui.SetNextWindowPos(imgui.ImVec2(sw/2,sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
         imgui.Begin(u8'Обновление',uws)
 
@@ -1427,24 +1472,114 @@ function imgui.OnDrawFrame()
         imgui.CenterText(u8('Изменения: '..updateChange))
         imgui.CenterText(u8'Обновить сейчас?')
 
-        if imgui.Button(u8'Да',imgui.ImVec2(215,25)) then 
+        if imgui.Button(u8'Да',imgui.ImVec2(345,25)) then 
             uws.v = false 
             sampAddChatMessage(sname..'Началось обновление скрипта',-1)
             path = getWorkingDirectory()..'\\LVaHelper.luac'
             downloadUrlToFile(link, path, download_handler)
         end
         imgui.SameLine()
-        if imgui.Button(u8'Нет',imgui.ImVec2(215,25)) then print('Обновление отклонено') uws.v = false end
+        if imgui.Button(u8'Нет',imgui.ImVec2(345,25)) then print('Обновление отклонено') uws.v = false end
  
         if doesFileExist(pathupd) then os.remove(pathupd) end
 
         imgui.End()
     end
 
+    if shpws.v then
+
+        imgui.ShowCursor = true
+
+        imgui.SetNextWindowSize(imgui.ImVec2(600, 500), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowPos(imgui.ImVec2(sw/2,sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
+
+        imgui.Begin(u8'Шпора',shpws)
+        
+        if imgui.Combo(u8'Выберите шпору', ShporaMenu, files,#files + 1) then changeBind = false end
+        if ShporaMenu.v == 0 then
+            imgui.Text(u8'Что-бы добавить или изменить шпору, перейдите по пути: ')
+            imgui.TextColoredRGB(u8(getWorkingDirectory().."\\LVaHelper\\"..MyName..'\\'..ip..'\\documents\\reads'))
+        end
+        if ShporaMenu.v then
+            i = ShporaMenu.v 
+            if files[i] then
+            path = mainDirectory..'\\documents\\reads\\'..files[i]
+            if doesFileExist(path) then
+                for line in io.lines(path) do
+                    imgui.Text(u8(line))
+                end
+
+            end
+
+            end
+        end
+        imgui.End()
+
+    end
+
+    if lws.v then
+        imgui.SetNextWindowSize(imgui.ImVec2(600, 300), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowPos(imgui.ImVec2(sw/2,sh/2),imgui.Cond.FirstUseEver,imgui.ImVec2(0.5,0.5))
+        imgui.Begin(u8'Лекции',lws)
+
+        files = loadtxt(2)
+
+        if imgui.Combo(u8'Выберите лекцию', ShporaMenu, files,#files + 1) then changeBind = false end
+        if ShporaMenu.v == 0 then
+            imgui.Text(u8'Что-бы добавить или изменить лекцию, перейдите по пути: ')
+            imgui.TextColoredRGB(u8(getWorkingDirectory().."\\LVaHelper\\"..MyName..'\\'..ip..'\\documents\\lectures'))
+        end
+        if ShporaMenu.v then
+            i = ShporaMenu.v
+            if i ~= 0 then
+                name =  files[i]:match('(%S+).txt')
+                if binderIni['l'..name] then
+                    levelBinder[2] = imgui.ImBuffer(u8(binderIni['l'..name].act),24) -- команда активации
+                    levelBinder[3] = imgui.ImBuffer(u8(binderIni['l'..name].wait),16) -- пауза
+                    imgui.PushItemWidth(125)
+                    if imgui.InputText(u8'Команда активации',levelBinder[2]) then
+                        binderIni['l'..name].act = u8:decode(levelBinder[2].v)
+                    end
+                    imgui.SameLine(390)
+                    imgui.Text(u8'Задержка:')
+                    imgui.SameLine()
+                    if imgui.InputText(u8'##15',levelBinder[3]) then
+                        binderIni['l'..name].wait = u8:decode(levelBinder[3].v)
+                    end
+                    imgui.PopItemWidth()
+                    if imgui.Button(u8('Удалить лекцию')) then
+                        binderIni['l'..name].wait = nil
+                        binderIni['l'..name].name = nil
+                        binderIni['l'..name] = nil
+                        ShporaMenu.v = 0
+                    end
+                elseif not binderIni['l'..name] and ShporaMenu.v ~= 0 then
+                    if imgui.Button(u8'Добавить лекцию') then
+                        binderIni['l'..name] = {}
+                        binderIni['l'..name].act = ''
+                        binderIni['l'..name].wait = 1000
+                    end
+                end
+                if files[i] then
+                    path = mainDirectory..'\\documents\\lectures\\'..files[i]
+                    if doesFileExist(path) then
+                        for line in io.lines(path) do
+                            imgui.Text(u8(line))
+                        end
+                    end
+                end
+            end
+            inicfg.save(binderIni,dcb)
+        end
+
+        imgui.End()
+    end
+
+
 end
 
 
-
+-----------------------------
 ------------------------------
 
 function main()
@@ -1474,6 +1609,9 @@ function main()
     dcp = mainDirectory..'\\post.ini'
     postIni = inicfg.load(nil,dcp)
 
+
+    checkDirectory(MyName)
+    
     if doesFileExist(dcf) then
         apply_custom_style(mainIni.settings.style)
     else
@@ -1481,30 +1619,11 @@ function main()
     end
 
 
-    buttonbind = {}
-    if doesFileExist(dcb) then
-        ActiveFastMenu = {
-            v = decodeJson(binderIni.fset.act)
-        }
-        ActiveFast = rkeys.registerHotKey(ActiveFastMenu.v, true, actfast)
-        for i=1,line_binder do
-            if binderIni['b'..i] then
-                if binderIni['b'..i].act ~= '{}' or binderIni['b'..i].act ~= '' then 
-                    table.insert(buttonbind,{v=binderIni['b'..i].act,z=i})
-                end
-            end
-        end
-        for k, v in ipairs(buttonbind) do
-            ButtonActiveted = rkeys.registerHotKey(decodeJson(v.v), true,onHotKey)
-        end
-
-    end
 
     auto_update()
 
     updateTime()
 
-    checkDirectory(MyName)
 
     sampAddChatMessage(sname..'Скрипт загружен. Активация {51964D}/lv{ffffff}',-1)
 
@@ -1523,20 +1642,22 @@ function main()
     sampRegisterChatCommand('getm',cmd_getm)
     sampRegisterChatCommand('post',cmd_post)
     sampRegisterChatCommand('findkv',cmd_findkv)
+    sampRegisterChatCommand('fmask',cmd_fmask)
+    sampRegisterChatCommand('r',cmd_f)
+    sampRegisterChatCommand('shpora',function()
+        files = loadtxt(1)
+        shpws.v = true
+    end)
+
 
     while not sampIsLocalPlayerSpawned() do wait(0) end
     
+
     check_stats()
 
     startTime = os.time()
 
-    
     if doesFileExist(dcf) then
-        if mainIni.settings.autoTeg then
-            sampRegisterChatCommand('r',cmd_f) 
-        else
-            sampUnregisterChatCommand('r')
-        end
 
         if mainIni.config.infbr then
             imgui.Process = true
@@ -1547,7 +1668,32 @@ function main()
         checkDirectory(MyName)
     end
 
+    lua_thread.create(checkBarack)
 
+    buttonbind = {}
+
+    if rkeys then
+        if doesFileExist(dcb) then
+            ActiveFastMenu = {
+                v = decodeJson(binderIni.fset.act)
+            }
+            ActiveFastMask = {
+                v = decodeJson(mainIni.binds.FastMask)
+            }
+            ActiveFast = rkeys.registerHotKey(ActiveFastMenu.v, true, actfast)
+            ActiveFmask = rkeys.registerHotKey(ActiveFastMask.v, true,cmd_fmaskB)
+            for i=1,line_binder do
+                if binderIni['b'..i] then
+                    if binderIni['b'..i].act ~= '{}' or binderIni['b'..i].act ~= '' then 
+                        table.insert(buttonbind,{v=binderIni['b'..i].act,z=i})
+                    end
+                end
+            end
+            for k, v in ipairs(buttonbind) do
+                ButtonActiveted = rkeys.registerHotKey(decodeJson(v.v), true,onHotKey)
+            end
+        end
+    end
 
     lua_thread.create(time)
 
@@ -1574,6 +1720,7 @@ function main()
                 imgui.ShowCursor = false
             end
         end
+
 
 
         if patrul then
@@ -1652,30 +1799,52 @@ function main()
 end
 
 function onHotKey(id,keys)
-    for i = 1,20 do
-        if binderIni['b'..i] then
-            if encodeJson(keys) == binderIni['b'..i].act then
-                lua_thread.create(function()
-                    if sampIsChatInputActive() or sampIsDialogActive() or isSampfuncsConsoleActive() then
+    if not sampIsCursorActive() then
+        for i = 1,20 do
+            if binderIni['b'..i] then
+                if encodeJson(keys) == binderIni['b'..i].act then
+                    lua_thread.create(function()
+                        if sampIsChatInputActive() or sampIsDialogActive() or isSampfuncsConsoleActive() then
 
-                    else
-                        if binderIni['b'..i] then
-                            for z =1,#binderIni['b'..i] do
-                                text = binderIni['b'..i][z]
-                                for word in string.gmatch(text, "{(%a+)}") do
-                                    modBinder = ModerBinder()
-                                    if modBinder[word] then
-                                        text = string.gsub(text,'{'..word..'}',modBinder[word])
+                        else
+                            if binderIni['b'..i] then
+                                for z =1,#binderIni['b'..i] do
+                                    text = binderIni['b'..i][z]
+                                    for word in string.gmatch(text, "{(%a+)}") do
+                                        modBinder = ModerBinder()
+                                        if modBinder[word] then
+                                            text = string.gsub(text,'{'..word..'}',modBinder[word])
+                                        end
                                     end
+                                    sampSendChat(text)
+                                    wait(binderIni['b'..i].wait)
                                 end
-                                sampSendChat(text)
-                                wait(binderIni['b'..i].wait)
                             end
                         end
-                    end
-                end)
+                    end)
+                end
             end
         end
+    end
+end
+
+function cmd_fmask()
+    fastmask = true
+    n = 0
+    lua_thread.create(function()
+        sampSendChat('/items')
+        wait(100)
+    end)
+end
+
+function cmd_fmaskB()
+    if not sampIsCursorActive() then
+        fastmask = true
+        n = 0
+        lua_thread.create(function()
+            sampSendChat('/items')
+            wait(100)
+        end)
     end
 end
 
@@ -1787,7 +1956,11 @@ end
 
 
 function cmd_f(arg)
-    sampSendChat('/r '..mainIni.config.rteg..' '..arg)
+    if mainIni.settings.autoTeg then
+        sampSendChat('/r '..mainIni.config.rteg..' '..arg)
+    else
+        sampSendChat('/r '..arg)
+    end
 end
 
 
@@ -1815,6 +1988,40 @@ function check_stats()
             print('Информация обновлена')
         end
     end)
+end
+
+
+function loadtxt(arg)
+    files = {}
+    if arg == 1 then
+        handle, file = findFirstFile(mainDirectory..'\\documents\\reads\\*.txt')
+        while file do
+            if handle then
+                if not file then
+                    findClose(handle)
+                else
+
+                    files[#files + 1] = file
+                    file = findNextFile(handle)
+                end
+            end
+        end
+    elseif arg == 2 then
+        handle, file = findFirstFile(mainDirectory..'\\documents\\lectures\\*.txt')
+        while file do
+            if handle then
+                if not file then
+                    findClose(handle)
+                else
+
+                    files[#files + 1] = file
+                    file = findNextFile(handle)
+                end
+            end
+        end
+    end
+    files[0] = u8('Не указано')
+    return files
 end
 
 ------ function in imgui ------
@@ -1910,8 +2117,8 @@ function sampev.onSendSpawn()
 end
 
 
-function sampev.onShowDialog(dialogID, style, title, button1, button2, text)
-    if dialogID == 20053 then
+function sampev.onShowDialog(dialogId, style, title, button1, button2, text)
+    if dialogId == 20053 then
        GetAutoBP()
     end
 end
@@ -1939,6 +2146,37 @@ function sampev.onSendCommand(command)
                     end
                 end)
             end
+        end
+    end
+    files = loadtxt(2)
+    for z = 1,#files do
+        name =  files[z]:match('(%S+).txt')
+        if binderIni['l'..name] then
+            if binderIni['l'..name].act:find('/') then
+                act = binderIni['l'..name].act
+            else
+                act = '/'..binderIni['l'..name].act
+            end
+            if act == command then
+                pause = binderIni['l'..name].wait
+                lua_thread.create(function()
+                    if files[z] then
+                        path = mainDirectory..'\\documents\\lectures\\'..files[z]
+                        if doesFileExist(path) then
+                            for line in io.lines(path) do
+                                for word in string.gmatch(line, "{(%a+)}") do
+                                    modBinder = ModerBinder()
+                                    if modBinder[word] then
+                                        line = string.gsub(line,'{'..word..'}',modBinder[word])
+                                    end
+                                end
+                                sampSendChat(line)
+                                wait(pause)
+                            end
+                        end
+                    end
+                end)
+            end 
         end
     end
     text = dogid(command)
@@ -1982,6 +2220,61 @@ function dogid(text)
 end
 
 
+function sampev.onShowTextDraw(drawid,draw)
+    if fastmask then
+        if draw.text == 'slot' then
+            for i=0,#MaskID do
+                if draw.modelId == MaskID[i] then
+                    if draw.backgroundColor == 872415232 then -- маска не одета
+                        lua_thread.create(function()
+                            sampSendClickTextdraw(drawid)
+                            wait(300)
+                            if sampIsDialogActive() then 
+                                text = sampGetDialogText()
+                                if text:find('Надеть акс') then
+                                    sampSendDialogResponse(24700, 1, 1)
+                                    wait(200)
+                                end 
+                            end
+                            sampCloseCurrentDialogWithButton(0)
+                            wait(100)
+                            setVirtualKeyDown(key.VK_ESCAPE,true)
+                            wait(100)
+                            setVirtualKeyDown(key.VK_ESCAPE,false)
+                            wait(1000)
+                            sampSendChat('/mask')
+                        end)
+                        findmask = true
+                    elseif draw.backgroundColor ==  -7357297 then -- маска одета
+                        lua_thread.create(function()
+                            fastmask = false
+                            findmask = true
+                            setVirtualKeyDown(key.VK_ESCAPE,true)
+                            wait(100)
+                            setVirtualKeyDown(key.VK_ESCAPE,false)
+                            wait(1000)
+                            sampSendChat('/mask')
+                        end)
+                    end
+                end
+            end
+            if findmask == false then
+                n = n + 1
+                if n == 8 then
+                    sampSendClickTextdraw(2184)
+                    n = 0
+                end
+            else
+                fastmask = false
+                findmask = false
+            end
+        end
+        
+    end
+end
+
+
+
 function sampev.onServerMessage(color, text)
 
     local _,MyId = sampGetPlayerIdByCharHandle(PLAYER_PED)
@@ -2005,8 +2298,8 @@ function sampev.onServerMessage(color, text)
 
     if doesFileExist(dcf) then
 
-        if mainIni.config.metka then
-            if (text:find('SOS') or text:find('sos') or text:find('СОС') or text:find('сос') ) and text:match("(%A)-(%d+)") and not text:find(MyName) then
+        if mainIni.settings.metka then
+            if (text:find('SOS') or text:find('sos') or text:find('СОС') or text:find('сос') ) and text:find("(%A)-(%d+)") and not text:find(MyName) then
                 kvx,kvy = text:match("(%A)-(%d+)")
                 cmd_findkv(kvx..'-'..kvy)
             end
@@ -2035,14 +2328,14 @@ function sampev.onServerMessage(color, text)
 
         if mainIni.config.modRacia then
             if color == 33357768 or color == -1920073984 and not text:find('отобрал рацию у') and not text:find('вернул рацию ') then
-                local mod = text:match('(%S+): .+'):gsub(" ", "")
-                if string.match(mod,'(%a+_%a+).(%d+)') then
-                    nick,id = string.match(mod,'(%a+_%a+).(%d+)')
+                nick = text:match('(%S+): .+')
+                if string.match(nick,'(%a+_%a+)%[(%d+)%]') then
+                    nick,id = string.match(nick,'(%a+_%a+)%[(%d+)%]')
                     colors = ("%06X"):format(bit.band(sampGetPlayerColor(id), 0xFFFFFF))
-                    text = text:gsub(nick, ("{8D8DFF}{%s}%s {%s}"):format(colors, nick, ("%06X"):format(bit.rshift(color, 8))))
+                    text = text:gsub(nick, ("{%s}%s {%s}"):format(("%06X"):format(bit.band(sampGetPlayerColor(id), 0xFFFFFF)), nick, ("%06X"):format(bit.rshift(color, 8))))
                 else
-                    id = sampGetPlayerIdByNickname(mod)
-                    text = text:gsub(mod, ("{8D8DFF}{%s}%s [%s]{%s}"):format(("%06X"):format(bit.band(sampGetPlayerColor(id), 0xFFFFFF)), mod,id, ("%06X"):format(bit.rshift(color, 8))))
+                    id = sampGetPlayerIdByNickname(nick)
+                    text = text:gsub(nick, ("{%s}%s {%s}[%s]"):format(("%06X"):format(bit.band(sampGetPlayerColor(id), 0xFFFFFF)), nick, ("%06X"):format(bit.rshift(color, 8)),id))
                 end
                 return {color,text}
             end
@@ -2060,7 +2353,7 @@ function sampev.onServerMessage(color, text)
         end
     end
 
-    if color == -8224086 then
+    if color == -8224086 then -- цвет департамента
         if #departamentlog == 25 then
             table.remove(departamentlog,1)
             table.insert(departamentlog,'['..os.date('%H:%M:%S')..']'..text)
@@ -2069,7 +2362,7 @@ function sampev.onServerMessage(color, text)
         end
     end
 
-    if color == -65366 then
+    if color == -65366 then -- цвет смс
         if #smslog == 25 then
             table.remove(smslog,1)
             table.insert(smslog,'['..os.date('%H:%M:%S')..']'..text)
@@ -2078,12 +2371,32 @@ function sampev.onServerMessage(color, text)
         end
     end
 
+    if mainIni.config.engine then
+        if text:find('Чтобы завести двигатель') then
+            VehCar = storeCarCharIsInNoSave(PLAYER_PED)
+            if doesVehicleExist(VehCar) then
+                lua_thread.create(function()
+                    setVirtualKeyDown(key.VK_2,true)
+                    wait(100)
+                    setVirtualKeyDown(key.VK_2,false)
+                end)
+            end
+        end
+    end
+
+    if text:match('На складе .+: %d+/%d+') then--and color == -65366 then
+        SkladFrac, summ, FullSklad = text:match('На складе (.+): (%d+)/(%d+)')
+        StatusSklad = math.floor(summ/1000)
+    end
+
 end
+
+
 -------
 function onWindowMessage(msg, wparam, lparam)
     if imgui.Process then
         if msg == 0x100 or msg == 0x101 then
-            if (wparam == key.VK_ESCAPE and (mws.v or sws.v or bws.v or dws.v)) and not isPauseMenuActive() then
+            if (wparam == key.VK_ESCAPE and (mws.v or sws.v or bws.v )) and not isPauseMenuActive() then
                 consumeWindowMessage(true, false)
                 if msg == 0x101 then
                     if sws.v then
@@ -2102,6 +2415,8 @@ function onWindowMessage(msg, wparam, lparam)
                     elseif fws.v then fws.v = false
                     elseif pws.v then pws.v = false
                     elseif aws.v then aws.v = false
+                    elseif shpws.v then shpws.v = false 
+                    elseif lws.v then lws.v = false
                     else
                         mws.v = false
                     end
@@ -2181,7 +2496,8 @@ function ModerBinder()
     modBinder = {['MyId']=MyId,['MyName']=MyName,['MyNameR'] = MyName:gsub('_',' '),['TarName'] = TargetNick,
     ['TarNameR'] = TargetNick:gsub('_',' '),['TarID'] = tid,['CarName']=CarName,['CarHealth'] = CarHealth,['PassegerName'] = PassegerName,
     ['PassegerID'] = PassegerID,['KV']=kvadrat(),['MyTeg']=mainIni.config.rteg,['MyRang']=mainIni.config.rangName,
-    ['NowDate'] = NowDate,['MyFraction']=mainIni.config.fraction}
+    ['NowDate'] = NowDate,['MyFraction']=mainIni.config.fraction,['StorageFrac'] = SkladFrac,['FullStorage'] = FullSklad/1000,
+    ['StatusStorage']=StatusSklad}
     return modBinder
 end
 
@@ -2197,10 +2513,27 @@ function checkDirectory(arg)
             print('Во время создание папки аккаунта произошла ошибка')
         end
     end
+    directFolderDocuments = directFolder..'\\documents'
+    if not doesDirectoryExist(directFolderDocuments) then createDirectory(directFolderDocuments) end
+
+    directFolderDocumentsLectures = directFolder..'\\documents\\lectures'
+    if not doesDirectoryExist(directFolderDocumentsLectures) then createDirectory(directFolderDocumentsLectures) end
+    
+    directFolderDocumentsReads = directFolder..'\\documents\\reads'
+    if not doesDirectoryExist(directFolderDocumentsReads) then createDirectory(directFolderDocumentsReads) end
+    
     if true then
         directFileConfig = directFolder.."\\config.ini"
         if doesFileExist(directFileConfig) then
             print('Конфиг загружен')
+            mainIni = inicfg.load(nil,directFileConfig)
+            if not mainIni.config.engine then
+                mainIni.config.engine = false
+            end
+            if not mainIni.config.pass then
+                mainIni.config.pass = ''
+            end
+            inicfg.save(mainIni,directFileConfig)
         else
             file = io.open(directFileConfig,'w')
             file.close()
@@ -2246,6 +2579,7 @@ function checkDirectory(arg)
     end
     libFolder = getWorkingDirectory()..'\\lib'
     checkPie = libFolder..'\\imgui_piemenu.lua'
+
     if doesFileExist(checkPie) then
         pie = require 'imgui_piemenu'
     else
@@ -2253,7 +2587,25 @@ function checkDirectory(arg)
         restart = true
     end
 
-    if restart then
+    checkRKey = libFolder..'\\rkeys.lua'
+    if doesFileExist(checkRKey) then
+        rkeys = require 'rkeys'
+    else
+        downloadUrlToFile('https://raw.githubusercontent.com/n1cho/EvolveRochester/main/cfg/rkeys.lua', checkRKey, download_handler)
+        restart = true
+    end
+
+    checkIA = libFolder..'\\imgui_addons.lua'
+    if doesFileExist(checkIA) then
+        imadd = require 'imgui_addons'
+        imgui.HotKey = require('imgui_addons').HotKey
+    else
+        downloadUrlToFile('https://raw.githubusercontent.com/n1cho/EvolveRochester/main/cfg/imgui_addons.lua', checkIA, download_handler)
+        restart = true
+    end
+
+
+    if restart and doesFileExist(checkRKey) then
         thisScript():reload()
         restart = false
     end
@@ -2296,11 +2648,6 @@ function getAmmoInClip()
 end
 
 function GetAutoBP()
-    _,myid = sampGetPlayerIdByCharHandle(PLAYER_PED)
-    MyName = sampGetPlayerNickname(myid)
-
-    dcf = getWorkingDirectory()..'\\cfg\\'..MyName..'\\config.ini'
-    mainIni = inicfg.load(nil,dcf)
     if mainIni.settings.autoBP then
         local gun = {}
         if mainIni.abp.deagle then table.insert( gun, 0) end
@@ -2341,12 +2688,54 @@ function download_handler(id, status, p1, p2)
       return false -- прервать загрузку
     end
     if status == dlstatus.STATUS_DOWNLOADINGDATA then
-      
-    elseif status == dlstatus.STATUS_ENDDOWNLOADDATA then
-      
+        print(string.format('Загружено %d из %d.', p1, p2))
     end
 end
+-------------
+function checkBarack()
+    while true do wait(100)
+        local SitBarrack = isCharInModel(PLAYER_PED, 433)
+        local a1 = isCharInArea2d(PLAYER_PED,162.1864,1860.6929,116.8406,1816.0267)
+        local a2 = isCharInArea2d(PLAYER_PED,295.2464,1970.3862,264.6068,2009.0071)
+        if (SitBarrack and StartTO and a1) or (SitBarrack and StartTO and a2)  then
+            StartTO = false
+            sampShowDialog(15,sname..'Доклад','{FFFFFF}Сделать доклад о начале поставок?','Да','Нет',0)
+            while sampIsDialogActive() do wait(1000) end
+            local result, button, list, input = sampHasDialogRespond(10)
+            if button == 1 then
+                postavki = true
+                sampSendChat('/lock')
+                wait(1000)
+                if a1 then
+                    if mainIni.config.sex ~= 'Мужчина' then
+                        sampSendChat('/r '..mainIni.config.rteg..' Начинаю поставки, взяла фуру из А-1')
+                    else
+                        sampSendChat('/r '..mainIni.config.rteg..' Начинаю поставки, взял фуру из А-1')
+                    end
+                elseif a2 then
+                    if mainIni.config.sex ~= 'Мужчина' then
+                        sampSendChat('/r '..mainIni.config.rteg..' Начинаю поставки, взяла фуру из А-2')
+                    else
+                        sampSendChat('/r '..mainIni.config.rteg..' Начинаю поставки, взял фуру из А-2')
+                    end
+                else
 
+                end
+                wait(1000)
+                sampSendChat('/carm')
+                wait(100)
+                if sampIsDialogActive() then
+                    sampSendDialogResponse(9653, 1, 0)
+                    sampCloseCurrentDialogWithButton(0)
+                end
+            elseif button == 0 then
+                sampAddChatMessage  (sname..'Доклад отменён',-1)
+            end
+        elseif not SitBarrack and not StartTO then
+            StartTO = true
+        end
+    end
+end
 
 -------- monitoring -----------
 function Search3Dtext(x, y, z, radius, patern)
